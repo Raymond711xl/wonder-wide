@@ -61,6 +61,11 @@ test("keeps the map explorer as a client boundary", async () => {
   assert.match(explorer, /selected-country-fill/);
   assert.match(explorer, /selected-city-area-fill/);
   assert.match(explorer, /selected-landmark-center/);
+  assert.doesNotMatch(
+    explorer,
+    /maxBounds\s*:/,
+    "full-world maxBounds breaks MapLibre startup when world copies are disabled",
+  );
   assert.match(layout, /generateMetadata/);
   assert.match(packageJson, /"name": "footprint-atlas"/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);

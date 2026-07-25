@@ -1087,13 +1087,13 @@ export default function AtlasExplorer() {
         minZoom: 0.8,
         maxZoom: 17,
         attributionControl: false,
+        // A full 360° maxBounds combined with disabled world copies can make
+        // MapLibre 6 calculate a singular projection matrix during startup.
+        // The local country layer already defines the visible world extent.
         renderWorldCopies: false,
-        maxBounds: [
-          [-180, -78],
-          [180, 84],
-        ],
       });
-    } catch {
+    } catch (error) {
+      console.error("Footprint Atlas map initialization failed", error);
       window.clearTimeout(readyTimer);
       const unavailableTimer = window.setTimeout(
         () => setMapState("unavailable"),
@@ -1208,7 +1208,7 @@ export default function AtlasExplorer() {
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !mapReady) return;
+    if (!map || !mapReady || !map.isStyleLoaded()) return;
 
     const countryCodes = [
       ...new Set(
@@ -1239,7 +1239,7 @@ export default function AtlasExplorer() {
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !mapReady) return;
+    if (!map || !mapReady || !map.isStyleLoaded()) return;
 
     map.setFilter(
       "active-country-fill",
@@ -1253,7 +1253,7 @@ export default function AtlasExplorer() {
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !mapReady) return;
+    if (!map || !mapReady || !map.isStyleLoaded()) return;
 
     (
       map.getSource("candidate-city-area") as
