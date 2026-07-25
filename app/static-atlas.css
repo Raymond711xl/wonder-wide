@@ -2128,3 +2128,241 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Compact information-density pass */
+.atlas-v2-panel-intro {
+  padding: 13px 20px 11px;
+}
+
+.atlas-v2-eyebrow {
+  gap: 4px;
+  font-size: 7px;
+}
+
+.atlas-v2-eyebrow svg {
+  width: 11px;
+  height: 11px;
+}
+
+.atlas-v2-panel-intro h1 {
+  margin: 7px 0 4px;
+  font-size: 24px;
+  line-height: 1.08;
+}
+
+.atlas-v2-panel-intro p {
+  overflow: hidden;
+  font-size: 7.5px;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.atlas-v2-roaming-badge {
+  grid-template-columns: 32px minmax(0, 1fr);
+  column-gap: 8px;
+  margin: 8px 17px 0;
+  padding: 7px 8px 0;
+  border-radius: 12px;
+  box-shadow: 3px 3px 0 rgba(33, 20, 63, 0.82);
+}
+
+.atlas-v2-roaming-badge-icon {
+  width: 32px;
+  height: 32px;
+}
+
+.atlas-v2-roaming-badge-icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.atlas-v2-roaming-badge > span:nth-child(2) {
+  gap: 0 6px;
+}
+
+.atlas-v2-roaming-badge small {
+  font-size: 5.5px;
+}
+
+.atlas-v2-roaming-badge strong {
+  font-size: 13px;
+}
+
+.atlas-v2-roaming-badge em {
+  font-size: 6px;
+}
+
+.atlas-v2-roaming-badge p {
+  margin-top: 0;
+  font-size: 6.5px;
+}
+
+.atlas-v2-roaming-progress {
+  min-width: 0;
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  padding: 6px 2px 7px;
+  border-top: 1px solid rgba(33, 20, 63, 0.22);
+}
+
+.atlas-v2-roaming-progress > span {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.atlas-v2-roaming-progress small {
+  font-size: 5px;
+  font-weight: 900;
+  letter-spacing: 0.07em;
+}
+
+.atlas-v2-roaming-progress b {
+  overflow: hidden;
+  font-size: 7px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.atlas-v2-roaming-progress > strong {
+  color: var(--stamp);
+  font-family: "Songti SC", "STSong", serif;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.atlas-v2-stats {
+  margin-top: 8px;
+}
+
+.atlas-v2-stats > div {
+  padding: 10px 6px 8px;
+}
+
+.atlas-v2-stats strong {
+  font-size: 20px;
+}
+
+.atlas-v2-active-country {
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 8px;
+  margin: 8px 17px 0;
+  padding: 7px 8px;
+}
+
+.atlas-v2-country-emblem {
+  width: 30px;
+  height: 30px;
+}
+
+.atlas-v2-panel-section {
+  padding: 11px 17px 10px;
+}
+
+.atlas-v2-section-title {
+  margin-bottom: 8px;
+}
+
+.atlas-v2-country-groups {
+  gap: 7px;
+}
+
+.atlas-v2-country-group-head {
+  padding: 7px 9px;
+}
+
+.atlas-v2-heat-swatch {
+  height: 26px;
+}
+
+.atlas-v2-visit-main {
+  padding: 7px 32px 4px 9px;
+}
+
+.static-country-badge .badge-name {
+  font-size: 9px;
+}
+
+.static-country-badge .badge-meta {
+  font-size: 6.8px;
+}
+
+.city-label-name {
+  font-size: 9.5px;
+}
+
+.city-label-meta {
+  font-size: 7px;
+}
+
+.static-atlas-coverage {
+  width: 208px;
+  border-radius: 13px;
+  box-shadow: 3px 3px 0 rgba(33, 20, 63, 0.2);
+}
+
+.static-atlas-map[data-map-mode="country"] .static-atlas-coverage {
+  top: 151px;
+}
+
+.static-atlas-coverage header {
+  min-height: 43px;
+  padding: 7px 9px;
+}
+
+.static-atlas-coverage header span {
+  max-width: 124px;
+  font-size: 6.5px;
+}
+
+.static-atlas-coverage header strong {
+  font-size: 22px;
+}
+
+.static-atlas-coverage-metrics span {
+  padding: 7px 8px 6px;
+  font-size: 5.5px;
+}
+
+.static-atlas-coverage-metrics b {
+  font-size: 11.5px;
+}
+
+.static-atlas-coverage > small {
+  padding: 0 8px 6px;
+  font-size: 5px;
+}
+
+@media (max-width: 880px) {
+  .atlas-v2-panel-intro {
+    padding: 9px 14px 8px;
+  }
+
+  .atlas-v2-panel-intro h1 {
+    margin: 4px 0 3px;
+    font-size: 20px;
+  }
+
+  .atlas-v2-panel-intro p {
+    display: block;
+    font-size: 6.5px;
+  }
+
+  .atlas-v2-roaming-badge {
+    margin: 6px 14px 0;
+  }
+
+  .atlas-v2-stats > div {
+    padding: 7px 5px 6px;
+  }
+
+  .static-atlas-coverage {
+    width: 196px;
+  }
+}

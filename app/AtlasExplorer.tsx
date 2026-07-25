@@ -37,6 +37,7 @@ import StaticAtlasMap, {
 } from "./StaticAtlasMap";
 import {
   FEATURED_CITIES,
+  chinaProvinceKey,
   formatLocationSubtitle,
   LANDMARKS_BY_CITY,
   normalizeCountryName,
@@ -52,6 +53,7 @@ import {
 
 const STORAGE_KEY = "footprint-atlas-m1-city-visits";
 const EARLIEST_VISIT_YEAR = 1900;
+const WORLD_COUNTRY_TOTAL = 173;
 const VALID_TRAVEL_TYPES = new Set<TravelType>(
   TRAVEL_TYPE_OPTIONS.map((option) => option.value),
 );
@@ -150,6 +152,14 @@ function makeISODate(year: number, month: number, day: number) {
 
 function clampNumber(value: number, minimum: number, maximum: number) {
   return Math.max(minimum, Math.min(maximum, value));
+}
+
+function formatCoveragePercent(visited: number, total: number) {
+  if (visited <= 0 || total <= 0) return "0%";
+  const percentage = (visited / total) * 100;
+  if (percentage < 0.1) return "<0.1%";
+  if (percentage < 10) return `${percentage.toFixed(1)}%`;
+  return `${Math.round(percentage)}%`;
 }
 
 function normalizeCityName(value: string) {
@@ -442,6 +452,16 @@ export default function AtlasExplorer() {
 
   const countryMetrics = useMemo(() => buildCountryMetrics(visits), [visits]);
   const roamingBadge = useMemo(() => roamingBadgeFor(visits), [visits]);
+  const chinaProvinceCount = useMemo(
+    () =>
+      new Set(
+        visits
+          .filter((visit) => visit.countryCode === "CN")
+          .map(chinaProvinceKey)
+          .filter(Boolean),
+      ).size,
+    [visits],
+  );
   const metricByCode = useMemo(
     () => new Map(countryMetrics.map((metric) => [metric.code, metric])),
     [countryMetrics],
@@ -496,6 +516,7 @@ export default function AtlasExplorer() {
   const activeMetric = activeCountry
     ? metricByCode.get(activeCountry.code)
     : undefined;
+  const isChinaActive = activeCountry?.code === "CN";
 
   const showToast = useCallback((message: string) => setToast(message), []);
 
@@ -858,9 +879,17 @@ export default function AtlasExplorer() {
             {activeCountry ? <MapPin size={14} /> : <Globe2 size={14} />}
           </span>
           <p>
-            {activeCountry ? "城市 · CITIES" : "国家 · COUNTRIES"}
+            {activeCountry
+              ? isChinaActive
+                ? "省级区域 · PROVINCES"
+                : "城市 · CITIES"
+              : "国家 · COUNTRIES"}
             <small>
-              {activeCountry ? "看你在这里怎么晃" : "看看地球熟到哪了"}
+              {activeCountry
+                ? isChinaActive
+                  ? "按省看看你晃到哪了"
+                  : "看你在这里怎么晃"
+                : "看看地球熟到哪了"}
             </small>
           </p>
         </div>
@@ -969,7 +998,9 @@ export default function AtlasExplorer() {
           {candidate
             ? "补充日期、出游性质与景点"
             : activeCountry
-              ? "城市地图 · CITY MAP"
+              ? isChinaActive
+                ? "省级地图 · PROVINCE MAP"
+                : "城市地图 · CITY MAP"
               : "国家地图 · COUNTRY MAP"}
         </span>
       </nav>
@@ -983,16 +1014,8 @@ export default function AtlasExplorer() {
             <Sparkles size={13} />
             WANDER WIDE · 在地球上瞎晃的正经记录
           </span>
-          <h1>
-            这地球，
-            <br />
-            咱晃过。
-          </h1>
-          <p>
-            点国家、搜城市、记下到访方式。
-            <br />
-            BEEN THERE. WANDERED THAT.
-          </p>
+          <h1>这地球，咱晃过。</h1>
+          <p>点国家、搜城市、记到访。 · BEEN THERE. WANDERED THAT.</p>
         </div>
 
         <section
@@ -1008,6 +1031,21 @@ export default function AtlasExplorer() {
             <em>{roamingBadge.english}</em>
           </span>
           <p>{roamingBadge.description}</p>
+          <div
+            className="atlas-v2-roaming-progress"
+            aria-label={`征服全球 ${formatCoveragePercent(stats.countries, WORLD_COUNTRY_TOTAL)}`}
+          >
+            <span>
+              <small>征服全球 · WORLD COVERAGE</small>
+              <b>
+                {stats.countries} / {WORLD_COUNTRY_TOTAL} 国家 · {stats.cities}{" "}
+                城市
+              </b>
+            </span>
+            <strong>
+              {formatCoveragePercent(stats.countries, WORLD_COUNTRY_TOTAL)}
+            </strong>
+          </div>
         </section>
 
         <div className="atlas-v2-stats" aria-label="足迹统计">
@@ -1042,7 +1080,9 @@ export default function AtlasExplorer() {
               <strong>{activeCountry.name}</strong>
               <span>
                 {activeMetric
-                  ? `${activeMetric.cityCount} 座城市 · ${activeMetric.landmarkCount} 个景点`
+                  ? isChinaActive
+                    ? `${chinaProvinceCount} 个省级区域 · ${activeMetric.cityCount} 座城市`
+                    : `${activeMetric.cityCount} 座城市 · ${activeMetric.landmarkCount} 个景点`
                   : "尚未记录城市"}
               </span>
             </div>

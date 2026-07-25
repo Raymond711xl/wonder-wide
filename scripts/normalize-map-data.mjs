@@ -13,8 +13,8 @@ if (!geonamesPath) {
 const boundarySources = {
   CN: {
     file: "public/data/country-subdivisions/CN.geojson",
-    level: "ADM2",
-    label: "县级行政区",
+    level: "ADM1",
+    label: "省级区域",
   },
   ES: {
     file: "public/data/country-subdivisions/ES.geojson",
@@ -41,8 +41,9 @@ for (const [countryCode, source] of Object.entries(boundarySources)) {
     features: collection.features.map((feature) => ({
       type: "Feature",
       properties: {
-        name: feature.properties?.shapeName ?? "",
-        id: feature.properties?.shapeID ?? "",
+        name:
+          feature.properties?.shapeName ?? feature.properties?.name ?? "",
+        id: feature.properties?.shapeID ?? feature.properties?.id ?? "",
       },
       geometry: {
         type: feature.geometry.type,

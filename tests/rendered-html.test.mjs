@@ -38,10 +38,15 @@ test("renders the Wander Wide experience", async () => {
   assert.match(html, /<title>晃悠 · Wander Wide<\/title>/i);
   assert.match(html, /这地球/);
   assert.match(html, /咱晃过/);
+  assert.match(html, /这地球，咱晃过。/);
   assert.match(html, /国家 · COUNTRIES/);
   assert.match(html, /搜索城市/);
   assert.match(html, /WANDER WIDE/);
   assert.match(html, /待出门/);
+  assert.match(html, /征服全球/);
+  assert.match(html, /WORLD COVERAGE/);
+  assert.match(html, /atlas-v2-roaming-progress/);
+  assert.doesNotMatch(html, /data-testid="map-coverage"/);
   assert.match(html, /三分熟/);
   assert.match(html, /WELL-DONE/);
   assert.match(html, /https:\/\/atlas\.example\/og-wander-wide\.png/);
@@ -76,6 +81,8 @@ test("keeps the two-level static atlas as a client boundary", async () => {
   assert.match(explorer, /openVisitEditor/);
   assert.match(explorer, /editingVisitId/);
   assert.match(explorer, /roamingBadgeFor/);
+  assert.match(explorer, /WORLD_COUNTRY_TOTAL/);
+  assert.match(explorer, /atlas-v2-roaming-progress/);
   assert.match(explorer, /RECOMMENDED SPOTS/);
   assert.match(staticMap, /world-countries\.geojson/);
   assert.match(staticMap, /viewBox/);
@@ -85,6 +92,10 @@ test("keeps the two-level static atlas as a client boundary", async () => {
   assert.match(staticMap, /country-subdivisions/);
   assert.match(staticMap, /static-atlas-coverage/);
   assert.match(staticMap, /formatCoverage/);
+  assert.match(staticMap, /CHINA_PROVINCE_TOTAL/);
+  assert.match(staticMap, /chinaProvinceKey/);
+  assert.match(staticMap, /PROVINCE COVERAGE/);
+  assert.match(staticMap, /Math\.max\(\s*76/);
   assert.match(staticMap, /GeoNames/i);
   assert.match(staticMap, /geoBoundaries/i);
   assert.match(staticMap, /onCityEdit/);
@@ -183,10 +194,28 @@ test("ships local coverage counts and detailed country boundaries", async () => 
   assert.ok(catalog.counts.ES > 500);
   assert.equal(catalog.counts.TW, undefined);
   assert.equal(china.type, "FeatureCollection");
-  assert.ok(china.features.length > 2_000);
+  assert.equal(china.boundaryLevel, "ADM1");
+  assert.equal(china.boundaryLabel, "省级区域");
+  assert.equal(china.features.length, 34);
+  assert.ok(
+    china.features.some(
+      (feature) => feature.properties?.name === "Taiwan Province",
+    ),
+  );
+  assert.ok(
+    china.features.every(
+      (feature) => feature.properties?.name && feature.properties?.id,
+    ),
+  );
   assert.match(china.attribution, /geoBoundaries/);
   assert.equal(spain.type, "FeatureCollection");
-  assert.ok(spain.features.length >= 50);
+  assert.equal(spain.boundaryLevel, "ADM2");
+  assert.equal(spain.features.length, 52);
+  assert.ok(
+    spain.features.every(
+      (feature) => feature.properties?.name && feature.properties?.id,
+    ),
+  );
   assert.match(spain.attribution, /geoBoundaries/);
 });
 

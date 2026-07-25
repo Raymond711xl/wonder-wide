@@ -44,6 +44,36 @@ export type ActiveCountry = {
   name: string;
 };
 
+export function chinaProvinceKey(
+  visit: Pick<CityCandidate, "name" | "region">,
+) {
+  const municipalityByCity: Record<string, string> = {
+    北京: "北京",
+    北京市: "北京",
+    上海: "上海",
+    上海市: "上海",
+    天津: "天津",
+    天津市: "天津",
+    重庆: "重庆",
+    重庆市: "重庆",
+    香港: "香港",
+    澳门: "澳门",
+  };
+  const source =
+    visit.region?.trim() ??
+    municipalityByCity[visit.name.trim()] ??
+    visit.name.trim();
+
+  return source
+    .replace(/壮族自治区$/u, "")
+    .replace(/回族自治区$/u, "")
+    .replace(/维吾尔自治区$/u, "")
+    .replace(/特别行政区$/u, "")
+    .replace(/自治区$/u, "")
+    .replace(/[省市]$/u, "")
+    .trim();
+}
+
 export const TRAVEL_TYPE_OPTIONS: Array<{
   value: TravelType;
   label: string;

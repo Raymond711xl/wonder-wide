@@ -15,7 +15,11 @@ import type {
   CityVisit,
   TravelType,
 } from "./atlas-data";
-import { normalizeCountryName, travelTypeScore } from "./atlas-data";
+import {
+  chinaProvinceKey,
+  normalizeCountryName,
+  travelTypeScore,
+} from "./atlas-data";
 
 const MAP_WIDTH = 1400;
 const MAP_HEIGHT = 760;
@@ -143,6 +147,7 @@ const WORLD_VIEW: ViewBox = {
 };
 
 const SUBDIVISION_COUNTRIES = new Set(["CN", "ES"]);
+const CHINA_PROVINCE_TOTAL = 34;
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
@@ -557,17 +562,30 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
       [activeCountry, featuredCities, visitedCityKeys],
     );
 
-    const globalVisitedCities = useMemo(
-      () => new Set(visits.map((visit) => visitKey(visit))).size,
-      [visits],
-    );
-    const globalVisitedCountries = countryMetrics.length;
     const activeCatalogCities = activeCountry
       ? cityCatalog?.counts[activeCountry.code] ?? 0
       : 0;
-    const coverageLabel = activeCountry
-      ? formatCoverage(cityAggregates.length, activeCatalogCities)
-      : formatCoverage(globalVisitedCountries, countries.length);
+    const isChinaProvinceScope = activeCountry?.code === "CN";
+    const visitedChinaProvinces = useMemo(
+      () =>
+        new Set(
+          visits
+            .filter((visit) => visit.countryCode === "CN")
+            .map(chinaProvinceKey)
+            .filter(Boolean),
+        ).size,
+      [visits],
+    );
+    const activeCoverageVisited = isChinaProvinceScope
+      ? visitedChinaProvinces
+      : cityAggregates.length;
+    const activeCoverageTotal = isChinaProvinceScope
+      ? subdivisions.length || CHINA_PROVINCE_TOTAL
+      : activeCatalogCities;
+    const coverageLabel = formatCoverage(
+      activeCoverageVisited,
+      activeCoverageTotal,
+    );
 
     const worldBadges = useMemo(() => {
       const occupied: Array<{ x: number; y: number; width: number }> = [];
@@ -575,7 +593,8 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
         .map((metric) => {
           const country = countryByCode.get(metric.code);
           if (!country) return null;
-          const width = 118;
+          const badgeWidth = Math.max(78, metric.name.length * 12 + 34);
+          const width = badgeWidth + 17;
           const offsets = [0, -38, 38, -76, 76];
           const offset = offsets.find((candidateOffset) =>
             occupied.every(
@@ -586,7 +605,13 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
           );
           const y = country.labelY + (offset ?? 92);
           occupied.push({ x: country.labelX, y, width });
-          return { metric, country, x: country.labelX, y };
+          return {
+            metric,
+            country,
+            badgeWidth,
+            x: country.labelX,
+            y,
+          };
         })
         .filter(
           (
@@ -594,6 +619,7 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
           ): badge is {
             metric: CountryMetric;
             country: ProjectedCountry;
+            badgeWidth: number;
             x: number;
             y: number;
           } => Boolean(badge),
@@ -616,7 +642,7 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
           preserveAspectRatio="xMidYMid meet"
           aria-label={
             activeCountry
-              ? `${activeCountry.name}城市地图`
+              ? `${activeCountry.name}${activeCountry.code === "CN" ? "省级" : "城市"}地图`
               : "全球国家地图"
           }
         >
@@ -716,47 +742,58 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
 
           {!activeCountry ? (
             <g className="static-country-badges" aria-label="已去国家标签">
-              {worldBadges.map(({ metric, country, x, y }) => (
-                <g
-                  key={metric.code}
-                  className={`static-country-badge heat-${metric.heatLevel}`}
-                  transform={`translate(${x} ${y})`}
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`${metric.name}，${metric.cityCount}座城市，${metric.landmarkCount}个景点`}
-                  onClick={() =>
-                    onCountrySelect({ code: metric.code, name: metric.name })
-                  }
-                  onKeyDown={(event) =>
-                    keyboardActivate(event, () =>
+              {worldBadges.map(
+                ({ metric, country, badgeWidth, x, y }) => (
+                  <g
+                    key={metric.code}
+                    className={`static-country-badge heat-${metric.heatLevel}`}
+                    transform={`translate(${x} ${y})`}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`${metric.name}，${metric.cityCount}座城市，${metric.landmarkCount}个景点`}
+                    onClick={() =>
                       onCountrySelect({
                         code: metric.code,
                         name: metric.name,
-                      }),
-                    )
-                  }
-                >
-                  <g transform={`scale(${markerScale})`}>
-                    <line
-                      x1="0"
-                      y1="0"
-                      x2={(country.labelX - x) / markerScale}
-                      y2={(country.labelY - y) / markerScale}
-                    />
-                    <circle r="13" />
-                    <text className="badge-count" textAnchor="middle" y="4">
-                      {metric.cityCount}
-                    </text>
-                    <rect x="17" y="-15" width="101" height="30" rx="10" />
-                    <text x="28" y="-2" className="badge-name">
-                      {metric.name}
-                    </text>
-                    <text x="28" y="10" className="badge-meta">
-                      {metric.cityCount} 城 · {metric.landmarkCount} 景点
-                    </text>
+                      })
+                    }
+                    onKeyDown={(event) =>
+                      keyboardActivate(event, () =>
+                        onCountrySelect({
+                          code: metric.code,
+                          name: metric.name,
+                        }),
+                      )
+                    }
+                  >
+                    <g transform={`scale(${markerScale})`}>
+                      <line
+                        x1="0"
+                        y1="0"
+                        x2={(country.labelX - x) / markerScale}
+                        y2={(country.labelY - y) / markerScale}
+                      />
+                      <circle r="13" />
+                      <text className="badge-count" textAnchor="middle" y="4">
+                        {metric.cityCount}
+                      </text>
+                      <rect
+                        x="17"
+                        y="-15"
+                        width={badgeWidth}
+                        height="30"
+                        rx="10"
+                      />
+                      <text x="28" y="-2" className="badge-name">
+                        {metric.name}
+                      </text>
+                      <text x="28" y="10" className="badge-meta">
+                        {metric.cityCount} 城 · {metric.landmarkCount} 景点
+                      </text>
+                    </g>
                   </g>
-                </g>
-              ))}
+                ),
+              )}
             </g>
           ) : (
             <g className="static-city-layer" aria-label={`${activeCountry.name}城市节点`}>
@@ -766,8 +803,8 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
                   aggregate.city.latitude,
                 );
                 const labelWidth = Math.max(
-                  116,
-                  aggregate.city.name.length * 16 + 72,
+                  76,
+                  aggregate.city.name.length * 13 + 48,
                 );
                 return (
                   <g
@@ -787,20 +824,20 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
                     <text className="city-number" textAnchor="middle" y="4">
                       {aggregate.sequence}
                     </text>
-                    <line x1="12" y1="0" x2="22" y2="0" />
+                    <line x1="12" y1="0" x2="20" y2="0" />
                     <rect
                       className="city-label-card"
-                      x="22"
-                      y="-21"
+                      x="20"
+                      y="-18"
                       width={labelWidth}
-                      height="42"
-                      rx="11"
+                      height="36"
+                      rx="10"
                     />
-                    <text x="34" y="-3" className="city-label-name">
+                    <text x="30" y="-2" className="city-label-name">
                       {aggregate.city.name}
                     </text>
-                    <text x="34" y="13" className="city-label-meta">
-                      {aggregate.travelType} · {aggregate.landmarks} 景点
+                    <text x="30" y="11" className="city-label-meta">
+                      {aggregate.travelType} · {aggregate.landmarks}景
                     </text>
                   </g>
                 );
@@ -826,7 +863,7 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
                       className="city-suggestion-card"
                       x="16"
                       y="-13"
-                      width={Math.max(66, city.name.length * 15 + 25)}
+                      width={Math.max(52, city.name.length * 12 + 20)}
                       height="26"
                       rx="9"
                     />
@@ -851,81 +888,83 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
           )}
         </svg>
 
-        <section
-          className="static-atlas-coverage"
-          data-testid="map-coverage"
-          data-coverage-scope={activeCountry ? "country" : "world"}
-          aria-label={
-            activeCountry
-              ? `${activeCountry.name}城市覆盖率`
-              : "征服全球覆盖率"
-          }
-        >
-          <header>
-            <span>
-              {activeCountry
-                ? `${activeCountry.name} · CITY COVERAGE`
-                : "征服全球 · WORLD COVERAGE"}
-            </span>
-            <strong>{coverageLabel}</strong>
-          </header>
+        {activeCountry ? (
+          <section
+            className="static-atlas-coverage"
+            data-testid="map-coverage"
+            data-coverage-scope={
+              isChinaProvinceScope ? "province" : "country"
+            }
+            aria-label={`${activeCountry.name}${isChinaProvinceScope ? "省级区域" : "城市"}覆盖率`}
+          >
+            <header>
+              <span>
+                {activeCountry.name} ·{" "}
+                {isChinaProvinceScope
+                  ? "PROVINCE COVERAGE"
+                  : "CITY COVERAGE"}
+              </span>
+              <strong>{coverageLabel}</strong>
+            </header>
 
-          {activeCountry ? (
             <div className="static-atlas-coverage-metrics">
-              <span>
-                <b>
-                  {cityAggregates.length.toLocaleString("zh-CN")} /{" "}
-                  {activeCatalogCities
-                    ? activeCatalogCities.toLocaleString("zh-CN")
-                    : "—"}
-                </b>
-                收录城市 · CITIES
-              </span>
-              {subdivisions.length > 0 ? (
-                <span>
-                  <b>{subdivisions.length.toLocaleString("zh-CN")}</b>
-                  {subdivisionLabel}细边界
-                </span>
-              ) : null}
+              {isChinaProvinceScope ? (
+                <>
+                  <span>
+                    <b>
+                      {visitedChinaProvinces} /{" "}
+                      {activeCoverageTotal.toLocaleString("zh-CN")}
+                    </b>
+                    省级区域 · PROVINCES
+                  </span>
+                  <span>
+                    <b>{cityAggregates.length.toLocaleString("zh-CN")}</b>
+                    已去城市 · CITIES
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span>
+                    <b>
+                      {cityAggregates.length.toLocaleString("zh-CN")} /{" "}
+                      {activeCatalogCities
+                        ? activeCatalogCities.toLocaleString("zh-CN")
+                        : "—"}
+                    </b>
+                    收录城市 · CITIES
+                  </span>
+                  {subdivisions.length > 0 ? (
+                    <span>
+                      <b>{subdivisions.length.toLocaleString("zh-CN")}</b>
+                      {subdivisionLabel}边界
+                    </span>
+                  ) : null}
+                </>
+              )}
             </div>
-          ) : (
-            <div className="static-atlas-coverage-metrics">
-              <span>
-                <b>
-                  {globalVisitedCountries.toLocaleString("zh-CN")} /{" "}
-                  {countries.length
-                    ? countries.length.toLocaleString("zh-CN")
-                    : "—"}
-                </b>
-                国家 · COUNTRIES
-              </span>
-              <span>
-                <b>
-                  {globalVisitedCities.toLocaleString("zh-CN")} /{" "}
-                  {cityCatalog?.total
-                    ? cityCatalog.total.toLocaleString("zh-CN")
-                    : "—"}
-                </b>
-                收录城市 · CITIES
-              </span>
-            </div>
-          )}
 
-          <small>
-            城市口径：人口 &gt; 15,000 或行政首府 · GEONAMES
-            {subdivisions.length > 0 ? " · BOUNDARIES: GEOBOUNDARIES" : ""}
-          </small>
-        </section>
+            <small>
+              {isChinaProvinceScope
+                ? "省级口径：34 个省级行政区 · GEOBOUNDARIES"
+                : "城市口径：人口 > 15,000 或行政首府 · GEONAMES"}
+              {!isChinaProvinceScope && subdivisions.length > 0
+                ? " · BOUNDARIES: GEOBOUNDARIES"
+                : ""}
+            </small>
+          </section>
+        ) : null}
 
         <div className="static-map-mode-note">
           <strong>
             {activeCountry
-              ? `${activeCountry.name} · CITIES`
+              ? `${activeCountry.name} · ${isChinaProvinceScope ? "PROVINCES" : "CITIES"}`
               : "全球 · THE WORLD"}
           </strong>
           <span>
             {activeCountry
-              ? "点击去过的城市即可修改 · TAP A CITY TO EDIT"
+              ? isChinaProvinceScope
+                ? "按省浏览，城市节点仍可修改 · TAP A CITY TO EDIT"
+                : "点击去过的城市即可修改 · TAP A CITY TO EDIT"
               : "颜色越深，这块地越熟 · DEEPER MEANS MORE"}
           </span>
         </div>
