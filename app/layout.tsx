@@ -5,7 +5,7 @@ import "./globals.css";
 
 const title = "远迹 · Footprint Atlas";
 const description =
-  "在一张可探索的世界地图上，选择你去过的国家、城市和地标。";
+  "在平面世界地图上点亮去过的国家，以城市为单位记录日期，并添加城市里的地标。";
 
 export async function generateMetadata(): Promise<Metadata> {
   const incomingHeaders = await headers();
