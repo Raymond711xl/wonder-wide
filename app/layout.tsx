@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import "maplibre-gl/dist/maplibre-gl.css";
 import "./globals.css";
+import "./static-atlas.css";
 
 const title = "远迹 · Footprint Atlas";
 const description =
-  "在平面世界地图上点亮去过的国家，以城市为单位记录日期，并添加城市里的地标。";
+  "在两级静态世界地图上点亮国家，以城市为单位记录日期、停留方式、地点与足迹积分。";
 
 export async function generateMetadata(): Promise<Metadata> {
   const incomingHeaders = await headers();

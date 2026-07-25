@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readdir, readFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 async function render() {
@@ -37,55 +37,60 @@ test("renders the Footprint Atlas experience", async () => {
   assert.match(html, /<html lang="zh-CN">/i);
   assert.match(html, /<title>远迹 · Footprint Atlas<\/title>/i);
   assert.match(html, /点亮国家/);
-  assert.match(html, /城市打卡/);
-  assert.match(html, /城市地标/);
+  assert.match(html, /国家看热度/);
+  assert.match(html, /城市看故事/);
+  assert.match(html, /城市地点/);
   assert.match(html, /FOOTPRINT ATLAS/);
   assert.match(html, /https:\/\/atlas\.example\/og\.png/);
   assert.doesNotMatch(html, /codex-preview|Starter Project|taking shape/i);
 });
 
-test("keeps the map explorer as a client boundary", async () => {
-  const [page, explorer, layout, packageJson] = await Promise.all([
-    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../app/AtlasExplorer.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../package.json", import.meta.url), "utf8"),
-  ]);
+test("keeps the two-level static atlas as a client boundary", async () => {
+  const [page, explorer, staticMap, atlasData, layout, packageJson] =
+    await Promise.all([
+      readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+      readFile(new URL("../app/AtlasExplorer.tsx", import.meta.url), "utf8"),
+      readFile(new URL("../app/StaticAtlasMap.tsx", import.meta.url), "utf8"),
+      readFile(new URL("../app/atlas-data.ts", import.meta.url), "utf8"),
+      readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+      readFile(new URL("../package.json", import.meta.url), "utf8"),
+    ]);
 
   assert.match(page, /<AtlasExplorer \/>/);
   assert.match(explorer, /^"use client";/);
-  assert.match(explorer, /maplibre-gl/);
+  assert.match(explorer, /<StaticAtlasMap/);
   assert.match(explorer, /localStorage/);
-  assert.match(explorer, /world-countries\.geojson/);
   assert.match(explorer, /type="date"/);
-  assert.match(explorer, /selected-country-fill/);
-  assert.match(explorer, /selected-city-area-fill/);
-  assert.match(explorer, /selected-landmark-center/);
-  assert.doesNotMatch(
-    explorer,
-    /maxBounds\s*:/,
-    "full-world maxBounds breaks MapLibre startup when world copies are disabled",
-  );
+  assert.match(explorer, /countryLevel/);
+  assert.match(explorer, /stayTag/);
+  assert.match(explorer, /points/);
+  assert.match(staticMap, /world-countries\.geojson/);
+  assert.match(staticMap, /viewBox/);
+  assert.match(staticMap, /projectCoordinate/);
+  assert.match(staticMap, /markerScale/);
+  assert.match(staticMap, /getScreenCTM/);
+  assert.match(atlasData, /"3天"/);
+  assert.match(atlasData, /"常住"/);
+  assert.doesNotMatch(explorer, /maplibre/i);
+  assert.doesNotMatch(staticMap, /maplibre|ArcGIS|tile\.openstreetmap/i);
   assert.match(layout, /generateMetadata/);
+  assert.doesNotMatch(layout, /maplibre/i);
   assert.match(packageJson, /"name": "footprint-atlas"/);
+  assert.doesNotMatch(packageJson, /maplibre/i);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
 });
 
-test("ships the MapLibre worker with the deployed client assets", async () => {
-  const assetsUrl = new URL("../dist/client/assets/", import.meta.url);
-  const assets = await readdir(assetsUrl);
-  const workerAsset = assets.find((file) =>
-    /^maplibre-gl-worker-[A-Za-z0-9_-]+\.mjs$/.test(file),
-  );
-  const explorerAsset = assets.find((file) =>
-    /^AtlasExplorer-[A-Za-z0-9_-]+\.js$/.test(file),
+test("uses one local projected SVG coordinate system without remote tiles", async () => {
+  const staticMap = await readFile(
+    new URL("../app/StaticAtlasMap.tsx", import.meta.url),
+    "utf8",
   );
 
-  assert.ok(workerAsset, "expected a bundled MapLibre worker asset");
-  assert.ok(explorerAsset, "expected the AtlasExplorer client bundle");
-
-  const explorer = await readFile(new URL(explorerAsset, assetsUrl), "utf8");
-  assert.match(explorer, new RegExp(`/assets/${workerAsset}`));
+  assert.match(staticMap, /<svg/);
+  assert.match(staticMap, /transform={`translate\(\$\{point\.x\}/);
+  assert.match(staticMap, /scale\(\$\{markerScale\}\)/);
+  assert.match(staticMap, /\/data\/world-countries\.geojson/);
+  assert.doesNotMatch(staticMap, /https?:\/\/.*(?:tiles?|arcgis)/i);
 });
 
 test("ships a local flat-world country layer", async () => {
