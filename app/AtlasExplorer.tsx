@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  ArrowLeft,
   ArrowRight,
   Building2,
   CalendarDays,
@@ -19,9 +20,6 @@ import {
   RotateCcw,
   Search,
   Sparkles,
-  Star,
-  Timer,
-  Trophy,
   X,
 } from "lucide-react";
 import {
@@ -33,25 +31,26 @@ import {
 } from "react";
 import type { FormEvent } from "react";
 import StaticAtlasMap, {
-  cityPlaceCount,
   type CountryMetric,
   type StaticAtlasMapHandle,
 } from "./StaticAtlasMap";
 import {
   FEATURED_CITIES,
   LANDMARKS_BY_CITY,
-  STAY_OPTIONS,
+  TRAVEL_TYPE_OPTIONS,
+  travelTypeScore,
   type ActiveCountry,
   type AtlasGeometry,
   type CityCandidate,
   type CityVisit,
   type LandmarkOption,
-  type StayTag,
+  type TravelType,
 } from "./atlas-data";
 
 const STORAGE_KEY = "footprint-atlas-m1-city-visits";
-const VALID_STAY_TAGS = new Set<StayTag>(
-  STAY_OPTIONS.map((option) => option.value),
+const EARLIEST_VISIT_YEAR = 1900;
+const VALID_TRAVEL_TYPES = new Set<TravelType>(
+  TRAVEL_TYPE_OPTIONS.map((option) => option.value),
 );
 
 type NominatimResult = {
@@ -88,6 +87,28 @@ function formatVisitDate(value: string) {
   return `${parts[0]}.${parts[1]}.${parts[2]}`;
 }
 
+function dateParts(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  const fallback = todayISO().split("-").map(Number);
+  return {
+    year: Number.isFinite(year) ? year : fallback[0],
+    month: Number.isFinite(month) ? month : fallback[1],
+    day: Number.isFinite(day) ? day : fallback[2],
+  };
+}
+
+function daysInMonth(year: number, month: number) {
+  return new Date(year, month, 0).getDate();
+}
+
+function makeISODate(year: number, month: number, day: number) {
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+function clampNumber(value: number, minimum: number, maximum: number) {
+  return Math.max(minimum, Math.min(maximum, value));
+}
+
 function normalizeCityName(value: string) {
   return value.trim().toLowerCase();
 }
@@ -103,20 +124,17 @@ function landmarkKey(
   return `${cityKey(visit)}:${landmark.id}`;
 }
 
-function countryLevel(cityCount: number, points: number) {
-  if (cityCount >= 4 || points >= 12) {
-    return { heatLevel: 4 as const, levelLabel: "生活版图" };
+function countryHeat(cityCount: number, hiddenScore: number) {
+  if (cityCount >= 4 || hiddenScore >= 12) {
+    return 4 as const;
   }
-  if (cityCount >= 3 || points >= 8) {
-    return { heatLevel: 3 as const, levelLabel: "深度足迹" };
+  if (cityCount >= 3 || hiddenScore >= 8) {
+    return 3 as const;
   }
-  if (cityCount >= 2 || points >= 4) {
-    return {
-      heatLevel: 2 as const,
-      levelLabel: cityCount >= 2 ? "多城漫游" : "城市深游",
-    };
+  if (cityCount >= 2 || hiddenScore >= 4) {
+    return 2 as const;
   }
-  return { heatLevel: 1 as const, levelLabel: "初次点亮" };
+  return 1 as const;
 }
 
 function buildCountryMetrics(visits: CityVisit[]): CountryMetric[] {
@@ -126,6 +144,7 @@ function buildCountryMetrics(visits: CityVisit[]): CountryMetric[] {
       name: string;
       cities: Set<string>;
       landmarks: Set<string>;
+      cityScores: Map<string, number>;
     }
   >();
 
@@ -134,8 +153,17 @@ function buildCountryMetrics(visits: CityVisit[]): CountryMetric[] {
       name: visit.country,
       cities: new Set<string>(),
       landmarks: new Set<string>(),
+      cityScores: new Map<string, number>(),
     };
-    current.cities.add(cityKey(visit));
+    const key = cityKey(visit);
+    current.cities.add(key);
+    current.cityScores.set(
+      key,
+      Math.max(
+        current.cityScores.get(key) ?? 0,
+        travelTypeScore(visit.travelType),
+      ),
+    );
     visit.landmarks.forEach((landmark) =>
       current.landmarks.add(landmarkKey(visit, landmark)),
     );
@@ -145,30 +173,32 @@ function buildCountryMetrics(visits: CityVisit[]): CountryMetric[] {
   return [...accumulators.entries()]
     .map(([code, item]) => {
       const cityCount = item.cities.size;
-      const placeCount = cityCount + item.landmarks.size;
-      const level = countryLevel(cityCount, placeCount);
+      const landmarkCount = item.landmarks.size;
+      const hiddenScore = [...item.cityScores.values()].reduce(
+        (total, score) => total + score,
+        0,
+      );
       return {
         code,
         name: item.name,
         cityCount,
-        placeCount,
-        points: placeCount,
-        ...level,
+        landmarkCount,
+        hiddenScore,
+        heatLevel: countryHeat(cityCount, hiddenScore),
       };
     })
     .sort(
       (left, right) =>
-        right.heatLevel - left.heatLevel || right.points - left.points,
+        right.heatLevel - left.heatLevel ||
+        right.hiddenScore - left.hiddenScore ||
+        right.cityCount - left.cityCount,
     );
 }
 
-function stayRank(tag: StayTag) {
-  return STAY_OPTIONS.findIndex((option) => option.value === tag);
-}
-
-function stayLabel(tag: StayTag) {
+function travelTypeDescription(travelType: TravelType) {
   return (
-    STAY_OPTIONS.find((option) => option.value === tag)?.description ?? "短途"
+    TRAVEL_TYPE_OPTIONS.find((option) => option.value === travelType)
+      ?.description ?? "到访"
   );
 }
 
@@ -185,12 +215,19 @@ function normalizeCityResult(result: NominatimResult): CityCandidate | null {
     address.municipality ??
     address.city_district ??
     result.name;
-  const country = address.country;
-  const countryCode = address.country_code?.toUpperCase();
-  if (!cityName || !country || !countryCode) return null;
+  const sourceCountry = address.country;
+  const sourceCountryCode = address.country_code?.toUpperCase();
+  if (!cityName || !sourceCountry || !sourceCountryCode) return null;
+  const isTaiwan = sourceCountryCode === "TW";
+  const country = isTaiwan ? "中国" : sourceCountry;
+  const countryCode = isTaiwan ? "CN" : sourceCountryCode;
 
   const region =
-    address.state ?? address.province ?? address.region ?? address.county;
+    address.state ??
+    address.province ??
+    address.region ??
+    address.county ??
+    (isTaiwan ? "台湾" : undefined);
   const geometry =
     result.geojson?.type === "Polygon" ||
     result.geojson?.type === "MultiPolygon"
@@ -239,24 +276,54 @@ function normalizeLandmarkResult(result: NominatimResult): LandmarkOption {
 
 function migrateVisits(value: unknown): CityVisit[] {
   if (!Array.isArray(value)) return [];
-  return value
-    .filter(
-      (item): item is CityVisit =>
-        Boolean(
-          item &&
-            typeof item === "object" &&
-            "visitId" in item &&
-            "countryCode" in item &&
-            "name" in item &&
-            "longitude" in item &&
-            "latitude" in item,
-        ),
+  const legacyTravelTypes: Record<string, TravelType> = {
+    "3天": "旅游",
+    "5天": "旅游",
+    "1个月": "短居 / 留学",
+    留学: "短居 / 留学",
+    常住: "常住",
+  };
+
+  return value.flatMap((item): CityVisit[] => {
+    if (
+      !item ||
+      typeof item !== "object" ||
+      !("visitId" in item) ||
+      !("countryCode" in item) ||
+      !("name" in item) ||
+      !("longitude" in item) ||
+      !("latitude" in item)
+    ) {
+      return [];
+    }
+
+    const stored = item as Partial<CityVisit> & {
+      stayTag?: unknown;
+      countryCode: string;
+    };
+    const requestedTravelType =
+      typeof stored.travelType === "string" ? stored.travelType : "";
+    const travelType = VALID_TRAVEL_TYPES.has(
+      requestedTravelType as TravelType,
     )
-    .map((visit) => ({
-      ...visit,
-      stayTag: VALID_STAY_TAGS.has(visit.stayTag) ? visit.stayTag : "3天",
-      landmarks: Array.isArray(visit.landmarks) ? visit.landmarks : [],
-    }));
+      ? (requestedTravelType as TravelType)
+      : legacyTravelTypes[String(stored.stayTag ?? "")] ?? "旅游";
+    const isTaiwan = stored.countryCode.toUpperCase() === "TW";
+    const country = isTaiwan ? "中国" : String(stored.country ?? "");
+    const region = stored.region ?? (isTaiwan ? "台湾" : undefined);
+
+    return [
+      {
+        ...(stored as CityVisit),
+        countryCode: isTaiwan ? "CN" : stored.countryCode.toUpperCase(),
+        country,
+        region,
+        subtitle: [region, country].filter(Boolean).join(" · "),
+        travelType,
+        landmarks: Array.isArray(stored.landmarks) ? stored.landmarks : [],
+      },
+    ];
+  });
 }
 
 export default function AtlasExplorer() {
@@ -273,8 +340,9 @@ export default function AtlasExplorer() {
   const [lookupLoading, setLookupLoading] = useState(false);
   const [candidate, setCandidate] = useState<CityCandidate | null>(null);
   const [visitDate, setVisitDate] = useState("");
-  const [visitStayTag, setVisitStayTag] = useState<StayTag>("3天");
-  const [landmarksOpen, setLandmarksOpen] = useState(true);
+  const [visitTravelType, setVisitTravelType] =
+    useState<TravelType>("旅游");
+  const [landmarksOpen, setLandmarksOpen] = useState(false);
   const [landmarkOptions, setLandmarkOptions] = useState<LandmarkOption[]>([]);
   const [selectedLandmarks, setSelectedLandmarks] = useState<LandmarkOption[]>(
     [],
@@ -302,9 +370,29 @@ export default function AtlasExplorer() {
       countries: countryMetrics.length,
       cities: cities.size,
       landmarks: landmarks.size,
-      points: cities.size + landmarks.size,
+      visits: visits.length,
     };
   }, [countryMetrics.length, visits]);
+
+  const selectedDateParts = useMemo(() => dateParts(visitDate), [visitDate]);
+  const todayParts = useMemo(() => dateParts(todayISO()), []);
+  const yearOptions = useMemo(
+    () =>
+      Array.from(
+        { length: todayParts.year - EARLIEST_VISIT_YEAR + 1 },
+        (_, index) => todayParts.year - index,
+      ),
+    [todayParts.year],
+  );
+  const maximumMonth =
+    selectedDateParts.year === todayParts.year ? todayParts.month : 12;
+  const maximumDay = Math.min(
+    daysInMonth(selectedDateParts.year, selectedDateParts.month),
+    selectedDateParts.year === todayParts.year &&
+      selectedDateParts.month === todayParts.month
+      ? todayParts.day
+      : Number.POSITIVE_INFINITY,
+  );
 
   const countryGroups = useMemo<CountryGroup[]>(
     () =>
@@ -336,20 +424,15 @@ export default function AtlasExplorer() {
     setCandidate(city);
     setActiveCountry({ code: city.countryCode, name: city.country });
     setVisitDate(todayISO());
-    setVisitStayTag("3天");
+    setVisitTravelType("旅游");
     setLandmarkOptions(landmarksForCity(city));
     setSelectedLandmarks([]);
     setLandmarkQuery("");
     setLandmarkError("");
-    setLandmarksOpen(true);
+    setLandmarksOpen(false);
     setSearchResults([]);
     setSearchError("");
     setPickMode(false);
-  }, []);
-
-  const focusCity = useCallback((city: CityCandidate) => {
-    setActiveCountry({ code: city.countryCode, name: city.country });
-    window.requestAnimationFrame(() => mapRef.current?.focusCity(city));
   }, []);
 
   const openCity = useCallback(
@@ -416,7 +499,12 @@ export default function AtlasExplorer() {
         "accept-language": "zh-CN,zh,en",
       });
       if (activeCountry?.code) {
-        params.set("countrycodes", activeCountry.code.toLowerCase());
+        params.set(
+          "countrycodes",
+          activeCountry.code === "CN"
+            ? "cn,tw"
+            : activeCountry.code.toLowerCase(),
+        );
       }
 
       const response = await fetch(
@@ -537,6 +625,27 @@ export default function AtlasExplorer() {
     );
   }
 
+  function updateVisitDate(
+    part: "year" | "month" | "day",
+    value: number,
+  ) {
+    let { year, month, day } = selectedDateParts;
+    if (part === "year") year = value;
+    if (part === "month") month = value;
+    if (part === "day") day = value;
+
+    const allowedMonth = year === todayParts.year ? todayParts.month : 12;
+    month = clampNumber(month, 1, allowedMonth);
+    const allowedDay = Math.min(
+      daysInMonth(year, month),
+      year === todayParts.year && month === todayParts.month
+        ? todayParts.day
+        : Number.POSITIVE_INFINITY,
+    );
+    day = clampNumber(day, 1, allowedDay);
+    setVisitDate(makeISODate(year, month, day));
+  }
+
   function addCandidateVisit() {
     if (!candidate) return;
     if (!visitDate) {
@@ -558,7 +667,7 @@ export default function AtlasExplorer() {
       ...candidate,
       visitId: `${candidate.id}-${visitDate}-${Date.now()}`,
       visitedOn: visitDate,
-      stayTag: visitStayTag,
+      travelType: visitTravelType,
       landmarks: selectedLandmarks,
     };
     setVisits((current) => [...current, visit]);
@@ -567,9 +676,7 @@ export default function AtlasExplorer() {
     setLandmarkOptions([]);
     setLandmarkQuery("");
     setQuery("");
-    showToast(
-      `已点亮 ${candidate.country} · ${candidate.name}，获得 ${cityPlaceCount(visit)} 分`,
-    );
+    showToast(`已记录 ${candidate.country} · ${candidate.name}`);
   }
 
   function removeVisit(visitId: string) {
@@ -606,10 +713,25 @@ export default function AtlasExplorer() {
         pickMode={pickMode}
         onCountrySelect={selectCountry}
         onCityOpen={openCity}
-        onCityFocus={focusCity}
         onPointPick={handlePointPick}
         onReady={handleMapReady}
       />
+
+      {activeCountry ? (
+        <button
+          type="button"
+          className="atlas-v2-world-back"
+          onClick={resetWorldView}
+        >
+          <span className="atlas-v2-world-back-icon">
+            <ArrowLeft size={19} />
+          </span>
+          <span>
+            <strong>返回世界地图</strong>
+            <small>退出 {activeCountry.name} 城市层</small>
+          </span>
+        </button>
+      ) : null}
 
       <header className="atlas-v2-header">
         <button
@@ -632,7 +754,7 @@ export default function AtlasExplorer() {
           <p>
             {activeCountry ? "城市层" : "国家层"}
             <small>
-              {activeCountry ? "查看城市、停留与积分" : "按国家热度浏览世界"}
+              {activeCountry ? "查看城市与到访记录" : "按国家足迹浏览世界"}
             </small>
           </p>
         </div>
@@ -726,21 +848,11 @@ export default function AtlasExplorer() {
         )}
       </section>
 
-      <nav className="atlas-v2-breadcrumb" aria-label="地图层级">
-        <button type="button" onClick={resetWorldView}>
-          世界
-        </button>
-        {activeCountry ? (
-          <>
-            <ChevronRight size={13} />
-            <button
-              type="button"
-              onClick={() => mapRef.current?.focusCountry(activeCountry.code)}
-            >
-              {activeCountry.name}
-            </button>
-          </>
-        ) : null}
+      <nav
+        className={`atlas-v2-breadcrumb ${activeCountry ? "has-country" : ""}`}
+        aria-label="地图层级"
+      >
+        <strong>{activeCountry?.name ?? "世界"}</strong>
         {candidate ? (
           <>
             <ChevronRight size={13} />
@@ -749,7 +861,7 @@ export default function AtlasExplorer() {
         ) : null}
         <span>
           {candidate
-            ? "补充停留、日期与城市地点"
+            ? "补充日期、出游性质与景点"
             : activeCountry
               ? "城市级静态地图"
               : "国家级静态地图"}
@@ -771,7 +883,7 @@ export default function AtlasExplorer() {
             城市看故事。
           </h1>
           <p>
-            世界层只表达国家与足迹强度；进入国家后，再看城市、停留方式、地点与积分。
+            世界层查看国家足迹；进入国家后，再看城市、出游性质与景点记录。
           </p>
         </div>
 
@@ -789,8 +901,8 @@ export default function AtlasExplorer() {
             <span>地标</span>
           </div>
           <div>
-            <strong>{String(stats.points).padStart(2, "0")}</strong>
-            <span>积分</span>
+            <strong>{String(stats.visits).padStart(2, "0")}</strong>
+            <span>到访</span>
           </div>
         </div>
 
@@ -807,11 +919,10 @@ export default function AtlasExplorer() {
               <strong>{activeCountry.name}</strong>
               <span>
                 {activeMetric
-                  ? `${activeMetric.cityCount} 城 · ${activeMetric.placeCount} 个地点 · ${activeMetric.points} 分`
-                  : "尚未点亮城市"}
+                  ? `${activeMetric.cityCount} 座城市 · ${activeMetric.landmarkCount} 个景点`
+                  : "尚未记录城市"}
               </span>
             </div>
-            <em>{activeMetric?.levelLabel ?? "等待点亮"}</em>
           </section>
         ) : null}
 
@@ -835,8 +946,8 @@ export default function AtlasExplorer() {
                 <Globe2 size={26} />
                 <span />
               </div>
-              <strong>从第一座城市开始点亮国家</strong>
-              <p>每座城市 1 分；添加一个城市地点，再增加 1 分。</p>
+              <strong>从第一座城市开始记录足迹</strong>
+              <p>选择到访日期与出游性质，景点可以稍后再补。</p>
               <div className="atlas-v2-suggestions">
                 {FEATURED_CITIES.slice(0, 4).map((city) => (
                   <button
@@ -868,22 +979,16 @@ export default function AtlasExplorer() {
                     <span>
                       <strong>{metric.name}</strong>
                       <small>
-                        {metric.cityCount} 城 · {metric.placeCount} 地 ·{" "}
-                        {metric.points} 分
+                        {metric.cityCount} 城 · {metric.landmarkCount} 景点
                       </small>
                     </span>
-                    <em>{metric.levelLabel}</em>
                     <ChevronRight size={15} />
                   </button>
 
                   <ol>
                     {countryVisits.map((visit, index) => (
                       <li key={visit.visitId}>
-                        <button
-                          type="button"
-                          className="atlas-v2-visit-main"
-                          onClick={() => focusCity(visit)}
-                        >
+                        <div className="atlas-v2-visit-main">
                           <span className="atlas-v2-visit-index">
                             {String(index + 1).padStart(2, "0")}
                           </span>
@@ -891,16 +996,20 @@ export default function AtlasExplorer() {
                             <strong>{visit.name}</strong>
                             <small>
                               {formatVisitDate(visit.visitedOn)} ·{" "}
-                              {stayLabel(visit.stayTag)}
+                              {travelTypeDescription(visit.travelType)}
                             </small>
                           </span>
-                          <span className={`atlas-v2-stay-tag stay-${stayRank(visit.stayTag)}`}>
-                            {visit.stayTag}
+                          <span className="atlas-v2-travel-tag">
+                            {visit.travelType}
                           </span>
-                          <span className="atlas-v2-score">
-                            +{cityPlaceCount(visit)}
+                          <span
+                            className="atlas-v2-landmark-count"
+                            aria-label={`${visit.landmarks.length}个景点`}
+                          >
+                            <Landmark size={12} />
+                            {visit.landmarks.length}
                           </span>
-                        </button>
+                        </div>
                         <button
                           type="button"
                           className="atlas-v2-remove"
@@ -917,11 +1026,6 @@ export default function AtlasExplorer() {
                                   .map((landmark) => landmark.name)
                                   .join(" · ")
                               : "仅记录城市"}
-                          </span>
-                          <span>
-                            <Trophy size={12} />
-                            {cityPlaceCount(visit)} 个地点 /{" "}
-                            {cityPlaceCount(visit)} 分
                           </span>
                         </div>
                       </li>
@@ -949,7 +1053,7 @@ export default function AtlasExplorer() {
             disabled={visits.length === 0}
             onClick={() =>
               showToast(
-                `已点亮 ${stats.countries} 个国家、${stats.cities} 座城市，累计 ${stats.points} 分`,
+                `已记录 ${stats.countries} 个国家、${stats.cities} 座城市`,
               )
             }
           >
@@ -981,21 +1085,22 @@ export default function AtlasExplorer() {
       </div>
 
       <div className="atlas-v2-map-legend" aria-label="国家热度图例">
+        <b>国家足迹密度</b>
         <span>
           <i className="heat-1" />
-          初见
+          较少
         </span>
         <span>
           <i className="heat-2" />
-          多城
+          渐多
         </span>
         <span>
           <i className="heat-3" />
-          深度
+          丰富
         </span>
         <span>
           <i className="heat-4" />
-          常驻
+          密集
         </span>
       </div>
 
@@ -1037,33 +1142,82 @@ export default function AtlasExplorer() {
             </button>
           </header>
 
-          <label className="atlas-v2-date-field">
+          <div className="atlas-v2-date-field">
             <span>
               <CalendarDays size={15} />
               到访日期
             </span>
-            <input
-              type="date"
-              value={visitDate}
-              max={todayISO()}
-              onChange={(event) => setVisitDate(event.target.value)}
-              required
-            />
-          </label>
+            <div className="atlas-v2-date-selects">
+              <label>
+                <small>年</small>
+                <select
+                  value={selectedDateParts.year}
+                  aria-label="到访年份"
+                  onChange={(event) =>
+                    updateVisitDate("year", Number(event.target.value))
+                  }
+                >
+                  {yearOptions.map((year) => (
+                    <option key={year} value={year}>
+                      {year} 年
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <small>月</small>
+                <select
+                  value={selectedDateParts.month}
+                  aria-label="到访月份"
+                  onChange={(event) =>
+                    updateVisitDate("month", Number(event.target.value))
+                  }
+                >
+                  {Array.from({ length: maximumMonth }, (_, index) => index + 1).map(
+                    (month) => (
+                      <option key={month} value={month}>
+                        {month} 月
+                      </option>
+                    ),
+                  )}
+                </select>
+              </label>
+              <label>
+                <small>日</small>
+                <select
+                  value={selectedDateParts.day}
+                  aria-label="到访日期"
+                  onChange={(event) =>
+                    updateVisitDate("day", Number(event.target.value))
+                  }
+                >
+                  {Array.from({ length: maximumDay }, (_, index) => index + 1).map(
+                    (day) => (
+                      <option key={day} value={day}>
+                        {day} 日
+                      </option>
+                    ),
+                  )}
+                </select>
+              </label>
+            </div>
+          </div>
 
-          <fieldset className="atlas-v2-stay-picker">
+          <fieldset className="atlas-v2-travel-picker">
             <legend>
-              <Timer size={15} />
-              游玩时长 / 出行性质
+              <MapPin size={15} />
+              出游性质
             </legend>
             <div>
-              {STAY_OPTIONS.map((option) => (
+              {TRAVEL_TYPE_OPTIONS.map((option) => (
                 <button
                   type="button"
                   key={option.value}
-                  className={visitStayTag === option.value ? "is-selected" : ""}
-                  aria-pressed={visitStayTag === option.value}
-                  onClick={() => setVisitStayTag(option.value)}
+                  className={
+                    visitTravelType === option.value ? "is-selected" : ""
+                  }
+                  aria-pressed={visitTravelType === option.value}
+                  onClick={() => setVisitTravelType(option.value)}
                 >
                   <strong>{option.label}</strong>
                   <small>{option.description}</small>
@@ -1081,12 +1235,12 @@ export default function AtlasExplorer() {
             >
               <span>
                 <Landmark size={15} />
-                城市地点
-                <small>每添加 1 个地点增加 1 分</small>
-              </span>
-              <span className="atlas-v2-live-score">
-                <Star size={13} />
-                {1 + selectedLandmarks.length} 分
+                景点（可选）
+                <small>
+                  {selectedLandmarks.length
+                    ? `已选 ${selectedLandmarks.length} 个`
+                    : "可以稍后补充"}
+                </small>
               </span>
               <ChevronDown
                 size={16}
@@ -1151,17 +1305,13 @@ export default function AtlasExplorer() {
           </div>
 
           <footer>
-            <button type="button" onClick={() => focusCity(candidate)}>
-              <LocateFixed size={15} />
-              查看城市位置
-            </button>
             <button
               type="button"
               className="primary"
               onClick={addCandidateVisit}
             >
               <Check size={16} />
-              点亮 · {1 + selectedLandmarks.length} 分
+              保存到访
             </button>
           </footer>
         </section>

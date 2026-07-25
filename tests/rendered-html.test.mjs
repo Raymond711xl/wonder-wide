@@ -36,12 +36,13 @@ test("renders the Footprint Atlas experience", async () => {
   const html = await response.text();
   assert.match(html, /<html lang="zh-CN">/i);
   assert.match(html, /<title>远迹 · Footprint Atlas<\/title>/i);
-  assert.match(html, /点亮国家/);
   assert.match(html, /国家看热度/);
   assert.match(html, /城市看故事/);
-  assert.match(html, /城市地点/);
+  assert.match(html, /出游性质/);
+  assert.match(html, /景点/);
   assert.match(html, /FOOTPRINT ATLAS/);
   assert.match(html, /https:\/\/atlas\.example\/og\.png/);
+  assert.doesNotMatch(html, /足迹积分|中华民国/);
   assert.doesNotMatch(html, /codex-preview|Starter Project|taking shape/i);
 });
 
@@ -60,17 +61,26 @@ test("keeps the two-level static atlas as a client boundary", async () => {
   assert.match(explorer, /^"use client";/);
   assert.match(explorer, /<StaticAtlasMap/);
   assert.match(explorer, /localStorage/);
-  assert.match(explorer, /type="date"/);
-  assert.match(explorer, /countryLevel/);
-  assert.match(explorer, /stayTag/);
-  assert.match(explorer, /points/);
+  assert.match(explorer, /aria-label="到访年份"/);
+  assert.match(explorer, /aria-label="到访月份"/);
+  assert.match(explorer, /countryHeat/);
+  assert.match(explorer, /travelType/);
+  assert.match(explorer, /hiddenScore/);
+  assert.match(explorer, /返回世界地图/);
   assert.match(staticMap, /world-countries\.geojson/);
   assert.match(staticMap, /viewBox/);
   assert.match(staticMap, /projectCoordinate/);
   assert.match(staticMap, /markerScale/);
   assert.match(staticMap, /getScreenCTM/);
-  assert.match(atlasData, /"3天"/);
+  assert.match(atlasData, /TRAVEL_TYPE_OPTIONS/);
+  assert.match(atlasData, /"路过"/);
+  assert.match(atlasData, /"旅游"/);
+  assert.match(atlasData, /"出差"/);
+  assert.match(atlasData, /"短居 \/ 留学"/);
   assert.match(atlasData, /"常住"/);
+  assert.match(atlasData, /"出生地"/);
+  assert.doesNotMatch(explorer, /type="date"|onCityFocus|focusCity/);
+  assert.doesNotMatch(staticMap, /onCityFocus|focusCity/);
   assert.doesNotMatch(explorer, /maplibre/i);
   assert.doesNotMatch(staticMap, /maplibre|ArcGIS|tile\.openstreetmap/i);
   assert.match(layout, /generateMetadata/);
@@ -108,4 +118,27 @@ test("ships a local flat-world country layer", async () => {
         feature.properties?.ISO_A2_EH && feature.properties?.NAME,
     ),
   );
+  const china = countries.features.find(
+    (feature) => feature.properties?.ISO_A2_EH === "CN",
+  );
+  const taiwan = countries.features.find(
+    (feature) => feature.properties?.ISO_A2_EH === "TW",
+  );
+  assert.equal(china?.properties?.NAME_ZH, "中国");
+  assert.equal(taiwan?.properties?.NAME_ZH, "中国台湾");
+  assert.doesNotMatch(raw, /中华民国/);
+});
+
+test("merges Taiwan geometry and search results into China", async () => {
+  const [explorer, staticMap] = await Promise.all([
+    readFile(new URL("../app/AtlasExplorer.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/StaticAtlasMap.tsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(staticMap, /china\.path = `\$\{china\.path\} \$\{taiwan\.path\}`/);
+  assert.match(staticMap, /country\.code !== "TW"/);
+  assert.match(explorer, /sourceCountryCode === "TW"/);
+  assert.match(explorer, /isTaiwan \? "CN"/);
+  assert.match(explorer, /"cn,tw"/);
+  assert.doesNotMatch(`${explorer}\n${staticMap}`, /中华民国/);
 });

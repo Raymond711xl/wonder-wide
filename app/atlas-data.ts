@@ -1,4 +1,10 @@
-export type StayTag = "3天" | "5天" | "1个月" | "留学" | "常住";
+export type TravelType =
+  | "路过"
+  | "旅游"
+  | "出差"
+  | "短居 / 留学"
+  | "常住"
+  | "出生地";
 
 export type AtlasGeometry = {
   type: "Polygon" | "MultiPolygon";
@@ -29,7 +35,7 @@ export type CityCandidate = {
 export type CityVisit = CityCandidate & {
   visitId: string;
   visitedOn: string;
-  stayTag: StayTag;
+  travelType: TravelType;
   landmarks: LandmarkOption[];
 };
 
@@ -38,17 +44,35 @@ export type ActiveCountry = {
   name: string;
 };
 
-export const STAY_OPTIONS: Array<{
-  value: StayTag;
+export const TRAVEL_TYPE_OPTIONS: Array<{
+  value: TravelType;
   label: string;
   description: string;
+  score: 1 | 2 | 3 | 4 | 5 | 6;
 }> = [
-  { value: "3天", label: "3 天", description: "短途" },
-  { value: "5天", label: "5 天", description: "漫游" },
-  { value: "1个月", label: "1 个月", description: "深游" },
-  { value: "留学", label: "留学", description: "长期体验" },
-  { value: "常住", label: "常住", description: "生活据点" },
+  { value: "路过", label: "路过", description: "短暂停留", score: 1 },
+  { value: "旅游", label: "旅游", description: "专程游览", score: 2 },
+  { value: "出差", label: "出差", description: "工作到访", score: 3 },
+  {
+    value: "短居 / 留学",
+    label: "短居 / 留学",
+    description: "阶段生活",
+    score: 4,
+  },
+  {
+    value: "常住",
+    label: "常住",
+    description: "工作 / 生活",
+    score: 5,
+  },
+  { value: "出生地", label: "出生地", description: "人生起点", score: 6 },
 ];
+
+export function travelTypeScore(travelType: TravelType) {
+  return (
+    TRAVEL_TYPE_OPTIONS.find((option) => option.value === travelType)?.score ?? 1
+  );
+}
 
 export const FEATURED_CITIES: CityCandidate[] = [
   {
@@ -319,4 +343,3 @@ export const LANDMARKS_BY_CITY: Record<string, LandmarkOption[]> = {
     },
   ],
 };
-

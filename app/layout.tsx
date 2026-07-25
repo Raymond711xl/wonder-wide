@@ -5,7 +5,7 @@ import "./static-atlas.css";
 
 const title = "远迹 · Footprint Atlas";
 const description =
-  "在两级静态世界地图上点亮国家，以城市为单位记录日期、停留方式、地点与足迹积分。";
+  "在两级静态世界地图上记录国家与城市足迹，并为每次到访补充日期、出游性质和景点。";
 
 export async function generateMetadata(): Promise<Metadata> {
   const incomingHeaders = await headers();

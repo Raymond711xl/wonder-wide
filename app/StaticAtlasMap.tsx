@@ -14,8 +14,9 @@ import type {
   AtlasGeometry,
   CityCandidate,
   CityVisit,
-  StayTag,
+  TravelType,
 } from "./atlas-data";
+import { travelTypeScore } from "./atlas-data";
 
 const MAP_WIDTH = 1400;
 const MAP_HEIGHT = 760;
@@ -71,10 +72,9 @@ export type CountryMetric = {
   code: string;
   name: string;
   cityCount: number;
-  placeCount: number;
-  points: number;
+  landmarkCount: number;
+  hiddenScore: number;
   heatLevel: 1 | 2 | 3 | 4;
-  levelLabel: string;
 };
 
 type StaticAtlasMapProps = {
@@ -86,7 +86,6 @@ type StaticAtlasMapProps = {
   pickMode: boolean;
   onCountrySelect: (country: ActiveCountry) => void;
   onCityOpen: (city: CityCandidate) => void;
-  onCityFocus: (city: CityCandidate) => void;
   onPointPick: (longitude: number, latitude: number) => void;
   onReady?: () => void;
 };
@@ -96,17 +95,14 @@ export type StaticAtlasMapHandle = {
   zoomIn: () => void;
   zoomOut: () => void;
   focusCountry: (countryCode: string) => void;
-  focusCity: (city: CityCandidate) => void;
 };
 
 type CityAggregate = {
   city: CityVisit;
   sequence: number;
-  stayTag: StayTag;
+  travelType: TravelType;
   landmarkIds: Set<string>;
   landmarks: number;
-  placeCount: number;
-  points: number;
 };
 
 const WORLD_VIEW: ViewBox = {
@@ -114,14 +110,6 @@ const WORLD_VIEW: ViewBox = {
   y: 0,
   width: MAP_WIDTH,
   height: MAP_HEIGHT,
-};
-
-const STAY_RANK: Record<StayTag, number> = {
-  "3天": 1,
-  "5天": 2,
-  "1个月": 3,
-  留学: 4,
-  常住: 5,
 };
 
 function clamp(value: number, min: number, max: number) {
@@ -149,10 +137,6 @@ function unprojectCoordinate(x: number, y: number) {
 
 function visitKey(visit: Pick<CityCandidate, "countryCode" | "name">) {
   return `${visit.countryCode}:${visit.name.trim().toLowerCase()}`;
-}
-
-export function cityPlaceCount(visit: Pick<CityVisit, "landmarks">) {
-  return 1 + visit.landmarks.length;
 }
 
 function walkCoordinates(
@@ -227,6 +211,18 @@ function geometryPath(geometry: AtlasGeometry) {
     .join(" ");
 }
 
+function mergeBounds(
+  first: ProjectedBounds,
+  second: ProjectedBounds,
+): ProjectedBounds {
+  return {
+    minX: Math.min(first.minX, second.minX),
+    minY: Math.min(first.minY, second.minY),
+    maxX: Math.max(first.maxX, second.maxX),
+    maxY: Math.max(first.maxY, second.maxY),
+  };
+}
+
 function fitBounds(
   bounds: ProjectedBounds,
   minimumWidth = 150,
@@ -281,11 +277,9 @@ function aggregateVisits(visits: CityVisit[], countryCode: string) {
       aggregates.set(key, {
         city: visit,
         sequence: index + 1,
-        stayTag: visit.stayTag,
+        travelType: visit.travelType,
         landmarkIds,
         landmarks: landmarkIds.size,
-        placeCount: 1 + landmarkIds.size,
-        points: 1 + landmarkIds.size,
       });
       return;
     }
@@ -294,10 +288,11 @@ function aggregateVisits(visits: CityVisit[], countryCode: string) {
       existing.landmarkIds.add(landmark.id),
     );
     existing.landmarks = existing.landmarkIds.size;
-    existing.placeCount = 1 + existing.landmarkIds.size;
-    existing.points = 1 + existing.landmarkIds.size;
-    if (STAY_RANK[visit.stayTag] > STAY_RANK[existing.stayTag]) {
-      existing.stayTag = visit.stayTag;
+    if (
+      travelTypeScore(visit.travelType) >
+      travelTypeScore(existing.travelType)
+    ) {
+      existing.travelType = visit.travelType;
     }
   });
 
@@ -329,7 +324,6 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
       pickMode,
       onCountrySelect,
       onCityOpen,
-      onCityFocus,
       onPointPick,
       onReady,
     },
@@ -386,7 +380,7 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
                     };
               return {
                 code,
-                name,
+                name: code === "CN" ? "中国" : name,
                 path: geometryPath(feature.geometry),
                 bounds,
                 labelX: label.x,
@@ -394,7 +388,18 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
               };
             })
             .filter((country): country is ProjectedCountry => Boolean(country));
-          setCountries(projected);
+
+          // Taiwan is drawn as part of China. It remains an independent
+          // geometry in the source dataset only so the coastline stays
+          // accurate, but is never exposed as a separate country target.
+          const china = projected.find((country) => country.code === "CN");
+          const taiwan = projected.find((country) => country.code === "TW");
+          if (china && taiwan) {
+            china.path = `${china.path} ${taiwan.path}`;
+            china.bounds = mergeBounds(china.bounds, taiwan.bounds);
+            china.name = "中国";
+          }
+          setCountries(projected.filter((country) => country.code !== "TW"));
           onReady?.();
         })
         .catch(() => {
@@ -430,17 +435,6 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
         focusCountry(countryCode) {
           const country = countryByCode.get(countryCode);
           if (country) setViewBox(fitBounds(country.bounds));
-        },
-        focusCity(city) {
-          const point = projectCoordinate(city.longitude, city.latitude);
-          const width = 190;
-          const height = width / MAP_ASPECT;
-          setViewBox({
-            x: clamp(point.x - width / 2, 0, MAP_WIDTH - width),
-            y: clamp(point.y - height / 2, 0, MAP_HEIGHT - height),
-            width,
-            height,
-          });
         },
       }),
       [countryByCode],
@@ -579,17 +573,18 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
               const metric = metricByCode.get(country.code);
               const isActive = activeCountry?.code === country.code;
               const isDimmed = Boolean(activeCountry && !isActive);
+              const canEnterCountry = !activeCountry && !pickMode;
               const activate = () => {
-                if (pickMode) return;
+                if (!canEnterCountry) return;
                 onCountrySelect({ code: country.code, name: country.name });
               };
               return (
                 <path
                   key={country.code}
                   d={country.path}
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`进入${country.name}`}
+                  role={canEnterCountry ? "button" : undefined}
+                  tabIndex={canEnterCountry ? 0 : undefined}
+                  aria-label={canEnterCountry ? `进入${country.name}` : undefined}
                   className={[
                     "static-country-shape",
                     metric ? `is-visited heat-${metric.heatLevel}` : "",
@@ -604,15 +599,19 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
                     event.stopPropagation();
                     if (pickMode) {
                       pickAtEvent(event);
-                    } else {
+                    } else if (canEnterCountry) {
                       activate();
                     }
                   }}
-                  onKeyDown={(event) => keyboardActivate(event, activate)}
+                  onKeyDown={
+                    canEnterCountry
+                      ? (event) => keyboardActivate(event, activate)
+                      : undefined
+                  }
                 >
                   <title>
                     {metric
-                      ? `${country.name} · ${metric.cityCount} 城 · ${metric.points} 分`
+                      ? `${country.name} · ${metric.cityCount} 座城市 · ${metric.landmarkCount} 个景点`
                       : country.name}
                   </title>
                 </path>
@@ -629,7 +628,7 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
                   transform={`translate(${x} ${y})`}
                   role="button"
                   tabIndex={0}
-                  aria-label={`${metric.name}，${metric.cityCount}座城市，${metric.points}分`}
+                  aria-label={`${metric.name}，${metric.cityCount}座城市，${metric.landmarkCount}个景点`}
                   onClick={() =>
                     onCountrySelect({ code: metric.code, name: metric.name })
                   }
@@ -658,7 +657,7 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
                       {metric.name}
                     </text>
                     <text x="28" y="10" className="badge-meta">
-                      {metric.cityCount} 城 · {metric.points} 分
+                      {metric.cityCount} 城 · {metric.landmarkCount} 景点
                     </text>
                   </g>
                 </g>
@@ -675,17 +674,12 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
                   116,
                   aggregate.city.name.length * 16 + 72,
                 );
-                const activate = () => onCityFocus(aggregate.city);
                 return (
                   <g
                     key={visitKey(aggregate.city)}
                     className="static-city-marker is-visited"
                     transform={`translate(${point.x} ${point.y}) scale(${markerScale})`}
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`${aggregate.city.name}，${aggregate.stayTag}，${aggregate.placeCount}个地点，${aggregate.points}分`}
-                    onClick={activate}
-                    onKeyDown={(event) => keyboardActivate(event, activate)}
+                    aria-label={`${aggregate.city.name}，${aggregate.travelType}，${aggregate.landmarks}个景点`}
                   >
                     <circle className="city-halo" r="16" />
                     <circle className="city-sequence" r="11" />
@@ -705,7 +699,7 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
                       {aggregate.city.name}
                     </text>
                     <text x="34" y="13" className="city-label-meta">
-                      {aggregate.stayTag} · {aggregate.placeCount} 地 · {aggregate.points} 分
+                      {aggregate.travelType} · {aggregate.landmarks} 景点
                     </text>
                   </g>
                 );
@@ -760,8 +754,8 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
           <strong>{activeCountry ? `${activeCountry.name} · 城市层` : "世界 · 国家层"}</strong>
           <span>
             {activeCountry
-              ? "所有城市节点与国家底图使用同一坐标系"
-              : "颜色越深，代表城市与地点积分越高"}
+              ? "城市节点固定在国家地图上；点击节点不会再次放大"
+              : "颜色越深，代表这个国家的足迹越丰富"}
           </span>
         </div>
 
