@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import test from "node:test";
 
 async function render() {
@@ -57,4 +57,21 @@ test("keeps the map explorer as a client boundary", async () => {
   assert.match(layout, /generateMetadata/);
   assert.match(packageJson, /"name": "footprint-atlas"/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
+});
+
+test("ships the MapLibre worker with the deployed client assets", async () => {
+  const assetsUrl = new URL("../dist/client/assets/", import.meta.url);
+  const assets = await readdir(assetsUrl);
+  const workerAsset = assets.find((file) =>
+    /^maplibre-gl-worker-[A-Za-z0-9_-]+\.mjs$/.test(file),
+  );
+  const explorerAsset = assets.find((file) =>
+    /^AtlasExplorer-[A-Za-z0-9_-]+\.js$/.test(file),
+  );
+
+  assert.ok(workerAsset, "expected a bundled MapLibre worker asset");
+  assert.ok(explorerAsset, "expected the AtlasExplorer client bundle");
+
+  const explorer = await readFile(new URL(explorerAsset, assetsUrl), "utf8");
+  assert.match(explorer, new RegExp(`/assets/${workerAsset}`));
 });

@@ -948,6 +948,46 @@ input:focus-visible {
   animation: toast-in 240ms ease-out;
 }
 
+.atlas-map-status {
+  position: absolute;
+  z-index: 12;
+  right: 18px;
+  bottom: 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  max-width: 300px;
+  padding: 10px 12px;
+  border: 1px solid rgba(20, 33, 29, 0.13);
+  border-radius: 11px;
+  color: var(--ink);
+  background: rgba(255, 253, 247, 0.94);
+  box-shadow: 0 10px 26px rgba(20, 33, 29, 0.12);
+  font-size: 10px;
+  line-height: 1.45;
+  backdrop-filter: blur(12px);
+}
+
+.atlas-map-status svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--stamp);
+}
+
+.atlas-map-status span,
+.atlas-map-status strong {
+  display: block;
+}
+
+.atlas-map-status strong {
+  margin-bottom: 1px;
+  font-size: 11px;
+}
+
+.atlas-map-status-error {
+  border-color: rgba(198, 83, 63, 0.3);
+}
+
 .atlas-loading {
   position: absolute;
   z-index: 40;
@@ -1158,6 +1198,13 @@ input:focus-visible {
     right: 12px;
     left: 12px;
     justify-content: center;
+  }
+
+  .atlas-map-status {
+    right: 12px;
+    bottom: 88px;
+    left: 12px;
+    max-width: none;
   }
 }
 

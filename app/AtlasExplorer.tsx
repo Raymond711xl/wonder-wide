@@ -20,6 +20,7 @@ import {
   X,
 } from "lucide-react";
 import * as maplibregl from "maplibre-gl";
+import maplibreWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
 import {
   FormEvent,
   useCallback,
@@ -30,6 +31,7 @@ import {
 } from "react";
 
 type PlaceLevel = "country" | "city" | "landmark" | "custom";
+type MapLoadState = "loading" | "ready" | "fallback" | "unavailable";
 
 type FootprintPlace = {
   id: string;
@@ -216,6 +218,21 @@ const LEVEL_META: Record<
 };
 
 const WORLD_STYLE = "https://demotiles.maplibre.org/globe.json";
+const MAP_LOAD_TIMEOUT_MS = 8000;
+const FALLBACK_STYLE: maplibregl.StyleSpecification = {
+  version: 8,
+  name: "Footprint Atlas lightweight map",
+  sources: {},
+  layers: [
+    {
+      id: "paper-background",
+      type: "background",
+      paint: {
+        "background-color": "#d7e4e1",
+      },
+    },
+  ],
+};
 
 function levelFromResult(result: NominatimResult): PlaceLevel {
   if (result.type === "country") return "country";
@@ -276,7 +293,8 @@ export default function AtlasExplorer() {
   const pickModeRef = useRef(false);
   const lastLookupRef = useRef(0);
 
-  const [mapReady, setMapReady] = useState(false);
+  const [mapState, setMapState] = useState<MapLoadState>("loading");
+  const mapReady = mapState === "ready" || mapState === "fallback";
   const [selected, setSelected] = useState<FootprintPlace[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const [query, setQuery] = useState("");
@@ -351,17 +369,24 @@ export default function AtlasExplorer() {
   );
 
   useEffect(() => {
+    let savedPlaces: FootprintPlace[] | null = null;
+
     try {
       const saved = window.localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved) as FootprintPlace[];
-        if (Array.isArray(parsed)) setSelected(parsed);
+        if (Array.isArray(parsed)) savedPlaces = parsed;
       }
     } catch {
       // Keep the prototype usable even if browser storage is unavailable.
-    } finally {
-      setHydrated(true);
     }
+
+    const hydrationTimer = window.setTimeout(() => {
+      if (savedPlaces) setSelected(savedPlaces);
+      setHydrated(true);
+    }, 0);
+
+    return () => window.clearTimeout(hydrationTimer);
   }, []);
 
   useEffect(() => {
@@ -386,16 +411,75 @@ export default function AtlasExplorer() {
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
 
-    const map = new maplibregl.Map({
-      container: mapContainerRef.current,
-      style: WORLD_STYLE,
-      center: [18, 22],
-      zoom: 1.25,
-      minZoom: 0.7,
-      maxZoom: 18,
-      attributionControl: false,
-      renderWorldCopies: true,
-    });
+    maplibregl.setWorkerUrl(maplibreWorkerUrl);
+
+    let map: maplibregl.Map;
+    let destroyed = false;
+    let startupSettled = false;
+    let fallbackStarted = false;
+    let fallbackSafetyTimer: number | undefined;
+
+    const finishStartup = (state: "ready" | "fallback") => {
+      if (destroyed || startupSettled) return;
+      startupSettled = true;
+      window.clearTimeout(primaryLoadTimer);
+      window.clearTimeout(fallbackSafetyTimer);
+      setMapState(state);
+
+      try {
+        map.setProjection({ type: "globe" });
+      } catch {
+        // The map remains fully usable when a renderer falls back to Mercator.
+      }
+    };
+
+    const startFallback = () => {
+      if (destroyed || startupSettled || fallbackStarted) return;
+      fallbackStarted = true;
+      window.clearTimeout(primaryLoadTimer);
+
+      const handleFallbackStyleLoad = () => finishStartup("fallback");
+      map.once("style.load", handleFallbackStyleLoad);
+
+      try {
+        map.setStyle(FALLBACK_STYLE);
+        fallbackSafetyTimer = window.setTimeout(() => {
+          if (destroyed || startupSettled) return;
+          startupSettled = true;
+          setMapState("unavailable");
+        }, 3000);
+      } catch {
+        map.off("style.load", handleFallbackStyleLoad);
+        startupSettled = true;
+        setMapState("unavailable");
+      }
+    };
+
+    const primaryLoadTimer = window.setTimeout(
+      startFallback,
+      MAP_LOAD_TIMEOUT_MS,
+    );
+
+    try {
+      map = new maplibregl.Map({
+        container: mapContainerRef.current,
+        style: WORLD_STYLE,
+        center: [18, 22],
+        zoom: 1.25,
+        minZoom: 0.7,
+        maxZoom: 18,
+        attributionControl: false,
+        renderWorldCopies: true,
+      });
+    } catch {
+      window.clearTimeout(primaryLoadTimer);
+      startupSettled = true;
+      const unavailableTimer = window.setTimeout(
+        () => setMapState("unavailable"),
+        0,
+      );
+      return () => window.clearTimeout(unavailableTimer);
+    }
 
     map.addControl(
       new maplibregl.NavigationControl({
@@ -410,13 +494,9 @@ export default function AtlasExplorer() {
       "bottom-right",
     );
 
-    map.on("load", () => {
-      setMapReady(true);
-      try {
-        map.setProjection({ type: "globe" });
-      } catch {
-        // The map remains fully usable when a renderer falls back to Mercator.
-      }
+    map.once("load", () => finishStartup("ready"));
+    map.on("error", () => {
+      if (!startupSettled) startFallback();
     });
 
     map.on("click", async (event) => {
@@ -475,6 +555,9 @@ export default function AtlasExplorer() {
 
     mapRef.current = map;
     return () => {
+      destroyed = true;
+      window.clearTimeout(primaryLoadTimer);
+      window.clearTimeout(fallbackSafetyTimer);
       map.remove();
       mapRef.current = null;
     };
@@ -897,6 +980,7 @@ export default function AtlasExplorer() {
             type="button"
             className={`atlas-pick-button ${pickMode ? "is-active" : ""}`}
             onClick={() => setPickMode((current) => !current)}
+            disabled={mapState === "unavailable"}
           >
             {pickMode ? <X size={17} /> : <Crosshair size={17} />}
             {pickMode ? "退出自由落点" : "自由落点"}
@@ -1001,7 +1085,27 @@ export default function AtlasExplorer() {
         </div>
       )}
 
-      {!mapReady && (
+      {mapState === "fallback" && (
+        <div className="atlas-map-status" role="status">
+          <Globe2 size={15} />
+          <span>
+            <strong>轻量地图模式</strong>
+            底图服务暂时无法连接，搜索与自由落点仍可继续。
+          </span>
+        </div>
+      )}
+
+      {mapState === "unavailable" && (
+        <div className="atlas-map-status atlas-map-status-error" role="alert">
+          <Globe2 size={15} />
+          <span>
+            <strong>地图暂时无法显示</strong>
+            仍可通过上方搜索添加地点。
+          </span>
+        </div>
+      )}
+
+      {mapState === "loading" && (
         <div className="atlas-loading">
           <div className="atlas-loading-mark">
             <Globe2 size={28} />
