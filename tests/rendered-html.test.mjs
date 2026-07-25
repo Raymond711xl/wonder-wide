@@ -81,7 +81,12 @@ test("keeps the two-level static atlas as a client boundary", async () => {
   assert.match(staticMap, /viewBox/);
   assert.match(staticMap, /projectCoordinate/);
   assert.match(staticMap, /markerScale/);
-  assert.match(staticMap, /region-asia/);
+  assert.match(staticMap, /country-city-counts\.json/);
+  assert.match(staticMap, /country-subdivisions/);
+  assert.match(staticMap, /static-atlas-coverage/);
+  assert.match(staticMap, /formatCoverage/);
+  assert.match(staticMap, /GeoNames/i);
+  assert.match(staticMap, /geoBoundaries/i);
   assert.match(staticMap, /onCityEdit/);
   assert.match(atlasData, /TRAVEL_TYPE_OPTIONS/);
   assert.match(atlasData, /"路过"/);
@@ -145,6 +150,44 @@ test("ships a local flat-world country layer", async () => {
   assert.equal(china?.properties?.NAME_ZH, "中国");
   assert.equal(taiwan?.properties?.NAME_ZH, "中国台湾");
   assert.doesNotMatch(raw, /中华民国/);
+});
+
+test("ships local coverage counts and detailed country boundaries", async () => {
+  const [catalogRaw, chinaRaw, spainRaw] = await Promise.all([
+    readFile(
+      new URL("../public/data/country-city-counts.json", import.meta.url),
+      "utf8",
+    ),
+    readFile(
+      new URL(
+        "../public/data/country-subdivisions/CN.geojson",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+    readFile(
+      new URL(
+        "../public/data/country-subdivisions/ES.geojson",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  ]);
+  const catalog = JSON.parse(catalogRaw);
+  const china = JSON.parse(chinaRaw);
+  const spain = JSON.parse(spainRaw);
+
+  assert.match(catalog.source, /GeoNames/);
+  assert.ok(catalog.total > 30_000);
+  assert.ok(catalog.counts.CN > 1_000);
+  assert.ok(catalog.counts.ES > 500);
+  assert.equal(catalog.counts.TW, undefined);
+  assert.equal(china.type, "FeatureCollection");
+  assert.ok(china.features.length > 2_000);
+  assert.match(china.attribution, /geoBoundaries/);
+  assert.equal(spain.type, "FeatureCollection");
+  assert.ok(spain.features.length >= 50);
+  assert.match(spain.attribution, /geoBoundaries/);
 });
 
 test("merges Taiwan geometry and search results into China", async () => {

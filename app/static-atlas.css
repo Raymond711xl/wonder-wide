@@ -45,10 +45,11 @@
 
 .static-country-shape {
   cursor: pointer;
-  stroke: rgba(33, 20, 63, 0.54);
-  stroke-width: 0.82;
+  stroke: rgba(72, 68, 78, 0.38);
+  stroke-width: 0.72;
   vector-effect: non-scaling-stroke;
   transition:
+    fill 160ms ease,
     filter 160ms ease,
     opacity 160ms ease;
 }
@@ -65,18 +66,30 @@
 
 .static-country-shape.is-active {
   stroke: #21143f;
-  stroke-width: 2.2;
+  stroke-width: 2;
   filter: drop-shadow(0 5px 9px rgba(75, 43, 33, 0.2));
 }
 
 .static-country-shape.is-dimmed {
-  opacity: 0.22;
+  opacity: 0.18;
 }
 
 .static-country-shape.is-active,
 .static-country-shape.is-dimmed {
   pointer-events: none;
   cursor: default;
+}
+
+.static-subdivision-boundaries {
+  pointer-events: none;
+}
+
+.static-subdivision-boundaries path {
+  fill: none;
+  stroke: rgba(33, 20, 63, 0.34);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 0.58;
 }
 
 .static-country-badge,
@@ -185,24 +198,25 @@
 }
 
 .city-suggestion-dot {
-  fill: #fffdf8;
-  stroke: #5f39dc;
-  stroke-width: 2;
+  fill: #f7f4ec;
+  stroke: #89857e;
+  stroke-width: 1.6;
 }
 
 .city-suggestion-card {
-  fill: rgba(255, 253, 248, 0.83);
+  fill: rgba(242, 239, 232, 0.92);
+  stroke: rgba(87, 82, 78, 0.38);
   stroke-dasharray: 2 2;
 }
 
 .city-suggestion-name {
-  fill: var(--ink);
+  fill: #66635f;
   font-size: 9px;
   font-weight: 750;
 }
 
 .static-city-marker.is-suggestion {
-  opacity: 0.78;
+  opacity: 0.58;
 }
 
 .static-city-marker.is-suggestion:hover {
@@ -220,6 +234,94 @@
   stroke: #fffdf8;
   stroke-width: 3;
   filter: drop-shadow(0 5px 8px rgba(20, 35, 31, 0.25));
+}
+
+.static-atlas-coverage {
+  position: absolute;
+  z-index: 4;
+  top: 136px;
+  left: 22px;
+  width: 250px;
+  overflow: hidden;
+  border: 1.5px solid rgba(33, 20, 63, 0.82);
+  border-radius: 16px;
+  color: var(--ink);
+  background: rgba(255, 253, 246, 0.93);
+  box-shadow: 5px 5px 0 rgba(33, 20, 63, 0.2);
+  backdrop-filter: blur(12px);
+}
+
+.static-atlas-map[data-map-mode="country"] .static-atlas-coverage {
+  top: 157px;
+}
+
+.static-atlas-coverage header {
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(33, 20, 63, 0.16);
+  background:
+    radial-gradient(circle at 14% 24%, rgba(216, 255, 86, 0.62), transparent 35%),
+    linear-gradient(120deg, rgba(255, 79, 120, 0.17), transparent 64%);
+}
+
+.static-atlas-coverage header span {
+  max-width: 145px;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.055em;
+  line-height: 1.35;
+}
+
+.static-atlas-coverage header strong {
+  color: var(--stamp);
+  font-family: "Songti SC", "STSong", serif;
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: -0.05em;
+}
+
+.static-atlas-coverage-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.static-atlas-coverage-metrics span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  padding: 9px 11px 8px;
+  color: var(--ink-soft);
+  font-size: 6.5px;
+  font-weight: 800;
+  letter-spacing: 0.025em;
+  line-height: 1.35;
+}
+
+.static-atlas-coverage-metrics span + span {
+  border-left: 1px solid rgba(33, 20, 63, 0.14);
+}
+
+.static-atlas-coverage-metrics b {
+  overflow: hidden;
+  color: var(--ink);
+  font-family: "Songti SC", "STSong", serif;
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.static-atlas-coverage > small {
+  display: block;
+  padding: 0 11px 8px;
+  color: rgba(33, 20, 63, 0.58);
+  font-size: 6px;
+  font-weight: 700;
 }
 
 .static-map-mode-note {
@@ -1871,6 +1973,16 @@
     display: none;
   }
 
+  .static-atlas-coverage {
+    top: 169px;
+    left: 12px;
+    width: min(250px, calc(100% - 24px));
+  }
+
+  .static-atlas-map[data-map-mode="country"] .static-atlas-coverage {
+    top: 194px;
+  }
+
   .atlas-v2-panel {
     z-index: 80;
     top: auto;
@@ -1986,6 +2098,22 @@
 
   .static-map-mode-note {
     max-width: 175px;
+  }
+
+  .static-atlas-coverage {
+    width: 224px;
+  }
+
+  .static-atlas-coverage header {
+    min-height: 52px;
+  }
+
+  .static-atlas-coverage header strong {
+    font-size: 24px;
+  }
+
+  .static-atlas-coverage > small {
+    display: none;
   }
 
   .static-map-mode-note span {

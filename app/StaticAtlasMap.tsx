@@ -62,11 +62,42 @@ type CountryCollection = {
 type ProjectedCountry = {
   code: string;
   name: string;
-  regionPattern: string;
   path: string;
   bounds: ProjectedBounds;
   labelX: number;
   labelY: number;
+};
+
+type SubdivisionProperties = {
+  name?: string;
+  id?: string;
+};
+
+type SubdivisionFeature = {
+  type: "Feature";
+  properties: SubdivisionProperties;
+  geometry: AtlasGeometry;
+};
+
+type SubdivisionCollection = {
+  type: "FeatureCollection";
+  countryCode: string;
+  boundaryLabel?: string;
+  attribution?: string;
+  features: SubdivisionFeature[];
+};
+
+type ProjectedSubdivision = {
+  id: string;
+  path: string;
+};
+
+type CityCatalog = {
+  source: string;
+  definition: string;
+  attribution: string;
+  total: number;
+  counts: Record<string, number>;
 };
 
 export type CountryMetric = {
@@ -110,6 +141,8 @@ const WORLD_VIEW: ViewBox = {
   width: MAP_WIDTH,
   height: MAP_HEIGHT,
 };
+
+const SUBDIVISION_COUNTRIES = new Set(["CN", "ES"]);
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
@@ -289,22 +322,17 @@ function aggregateVisits(visits: CityVisit[], countryCode: string) {
   return [...aggregates.values()];
 }
 
-function regionPattern(continent?: string) {
-  const patterns: Record<string, string> = {
-    Asia: "asia",
-    Europe: "europe",
-    Africa: "africa",
-    "North America": "north-america",
-    "South America": "south-america",
-    Oceania: "oceania",
-  };
-  return patterns[continent ?? ""] ?? "other";
+function countryFill(level?: number, isActive = false) {
+  if (level) return `url(#country-heat-${level})`;
+  return isActive ? "#fff9ed" : "#e9e6df";
 }
 
-function countryFill(country: ProjectedCountry, level?: number) {
-  return level
-    ? `url(#country-heat-${level})`
-    : `url(#region-${country.regionPattern})`;
+function formatCoverage(visited: number, total: number) {
+  if (total <= 0 || visited <= 0) return "0%";
+  const percentage = (visited / total) * 100;
+  if (percentage < 0.1) return "<0.1%";
+  if (percentage < 10) return `${percentage.toFixed(1)}%`;
+  return `${Math.round(percentage)}%`;
 }
 
 function keyboardActivate(
@@ -332,6 +360,11 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
     ref,
   ) {
     const [countries, setCountries] = useState<ProjectedCountry[]>([]);
+    const [cityCatalog, setCityCatalog] = useState<CityCatalog | null>(null);
+    const [subdivisions, setSubdivisions] = useState<ProjectedSubdivision[]>(
+      [],
+    );
+    const [subdivisionLabel, setSubdivisionLabel] = useState("");
     const [viewBox, setViewBox] = useState<ViewBox>(WORLD_VIEW);
     const [loadError, setLoadError] = useState(false);
 
@@ -382,7 +415,6 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
               return {
                 code,
                 name: normalizeCountryName(name, code),
-                regionPattern: regionPattern(feature.properties.CONTINENT),
                 path: geometryPath(feature.geometry),
                 bounds,
                 labelX: label.x,
@@ -410,6 +442,65 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
         cancelled = true;
       };
     }, []);
+
+    useEffect(() => {
+      let cancelled = false;
+      fetch("/data/country-city-counts.json")
+        .then((response) => {
+          if (!response.ok) throw new Error("City catalog unavailable");
+          return response.json() as Promise<CityCatalog>;
+        })
+        .then((catalog) => {
+          if (!cancelled) setCityCatalog(catalog);
+        })
+        .catch(() => {
+          if (!cancelled) setCityCatalog(null);
+        });
+      return () => {
+        cancelled = true;
+      };
+    }, []);
+
+    useEffect(() => {
+      let cancelled = false;
+      if (
+        !activeCountry ||
+        !SUBDIVISION_COUNTRIES.has(activeCountry.code)
+      ) {
+        setSubdivisions([]);
+        setSubdivisionLabel("");
+        return () => {
+          cancelled = true;
+        };
+      }
+
+      setSubdivisions([]);
+      setSubdivisionLabel("");
+      fetch(`/data/country-subdivisions/${activeCountry.code}.geojson`)
+        .then((response) => {
+          if (!response.ok) throw new Error("Subdivision map unavailable");
+          return response.json() as Promise<SubdivisionCollection>;
+        })
+        .then((collection) => {
+          if (cancelled) return;
+          setSubdivisions(
+            collection.features.map((feature, index) => ({
+              id: feature.properties.id || `${activeCountry.code}-${index}`,
+              path: geometryPath(feature.geometry),
+            })),
+          );
+          setSubdivisionLabel(collection.boundaryLabel ?? "行政区");
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setSubdivisions([]);
+          setSubdivisionLabel("");
+        });
+
+      return () => {
+        cancelled = true;
+      };
+    }, [activeCountry]);
 
     useEffect(() => {
       if (countries.length === 0) return;
@@ -465,6 +556,18 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
           : [],
       [activeCountry, featuredCities, visitedCityKeys],
     );
+
+    const globalVisitedCities = useMemo(
+      () => new Set(visits.map((visit) => visitKey(visit))).size,
+      [visits],
+    );
+    const globalVisitedCountries = countryMetrics.length;
+    const activeCatalogCities = activeCountry
+      ? cityCatalog?.counts[activeCountry.code] ?? 0
+      : 0;
+    const coverageLabel = activeCountry
+      ? formatCoverage(cityAggregates.length, activeCatalogCities)
+      : formatCoverage(globalVisitedCountries, countries.length);
 
     const worldBadges = useMemo(() => {
       const occupied: Array<{ x: number; y: number; width: number }> = [];
@@ -534,35 +637,6 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
               <stop offset="0%" stopColor="#43266f" />
               <stop offset="100%" stopColor="#1d1537" />
             </linearGradient>
-            <pattern id="region-asia" width="20" height="20" patternUnits="userSpaceOnUse">
-              <rect width="20" height="20" fill="#ffe38a" />
-              <circle cx="5" cy="5" r="1.4" fill="#ef8f48" fillOpacity=".34" />
-              <circle cx="15" cy="15" r="1.4" fill="#ef8f48" fillOpacity=".34" />
-            </pattern>
-            <pattern id="region-europe" width="18" height="18" patternUnits="userSpaceOnUse">
-              <rect width="18" height="18" fill="#cfb8ff" />
-              <path d="M-3 18 18-3M6 21 21 6" stroke="#7558bf" strokeOpacity=".22" strokeWidth="2" />
-            </pattern>
-            <pattern id="region-africa" width="22" height="22" patternUnits="userSpaceOnUse">
-              <rect width="22" height="22" fill="#ffb9a7" />
-              <path d="m2 11 4-4 4 4-4 4Zm12 0 4-4 4 4-4 4Z" fill="#d75a69" fillOpacity=".18" />
-            </pattern>
-            <pattern id="region-north-america" width="20" height="20" patternUnits="userSpaceOnUse">
-              <rect width="20" height="20" fill="#9ce7bf" />
-              <path d="M0 10h20M10 0v20" stroke="#2f9876" strokeOpacity=".18" strokeWidth="1.5" />
-            </pattern>
-            <pattern id="region-south-america" width="19" height="19" patternUnits="userSpaceOnUse">
-              <rect width="19" height="19" fill="#ffc978" />
-              <circle cx="9.5" cy="9.5" r="4" fill="none" stroke="#da7a2f" strokeOpacity=".22" strokeWidth="1.5" />
-            </pattern>
-            <pattern id="region-oceania" width="20" height="20" patternUnits="userSpaceOnUse">
-              <rect width="20" height="20" fill="#89d9ff" />
-              <path d="M0 15c5-6 10-6 15 0s10 6 15 0" fill="none" stroke="#3478b8" strokeOpacity=".24" strokeWidth="1.5" />
-            </pattern>
-            <pattern id="region-other" width="18" height="18" patternUnits="userSpaceOnUse">
-              <rect width="18" height="18" fill="#d9d5ea" />
-              <circle cx="9" cy="9" r="1.2" fill="#625d83" fillOpacity=".2" />
-            </pattern>
             <pattern
               id="atlas-grid"
               width="38"
@@ -602,7 +676,9 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
                     .filter(Boolean)
                     .join(" ")}
                   fillRule="evenodd"
-                  style={{ fill: countryFill(country, metric?.heatLevel) }}
+                  style={{
+                    fill: countryFill(metric?.heatLevel, isActive),
+                  }}
                   onClick={(event) => {
                     event.stopPropagation();
                     if (canEnterCountry) activate();
@@ -622,6 +698,21 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
               );
             })}
           </g>
+
+          {activeCountry && subdivisions.length > 0 ? (
+            <g
+              className="static-subdivision-boundaries"
+              aria-hidden="true"
+            >
+              {subdivisions.map((subdivision) => (
+                <path
+                  key={subdivision.id}
+                  d={subdivision.path}
+                  vectorEffect="non-scaling-stroke"
+                />
+              ))}
+            </g>
+          ) : null}
 
           {!activeCountry ? (
             <g className="static-country-badges" aria-label="已去国家标签">
@@ -759,6 +850,72 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
             </g>
           )}
         </svg>
+
+        <section
+          className="static-atlas-coverage"
+          data-testid="map-coverage"
+          data-coverage-scope={activeCountry ? "country" : "world"}
+          aria-label={
+            activeCountry
+              ? `${activeCountry.name}城市覆盖率`
+              : "征服全球覆盖率"
+          }
+        >
+          <header>
+            <span>
+              {activeCountry
+                ? `${activeCountry.name} · CITY COVERAGE`
+                : "征服全球 · WORLD COVERAGE"}
+            </span>
+            <strong>{coverageLabel}</strong>
+          </header>
+
+          {activeCountry ? (
+            <div className="static-atlas-coverage-metrics">
+              <span>
+                <b>
+                  {cityAggregates.length.toLocaleString("zh-CN")} /{" "}
+                  {activeCatalogCities
+                    ? activeCatalogCities.toLocaleString("zh-CN")
+                    : "—"}
+                </b>
+                收录城市 · CITIES
+              </span>
+              {subdivisions.length > 0 ? (
+                <span>
+                  <b>{subdivisions.length.toLocaleString("zh-CN")}</b>
+                  {subdivisionLabel}细边界
+                </span>
+              ) : null}
+            </div>
+          ) : (
+            <div className="static-atlas-coverage-metrics">
+              <span>
+                <b>
+                  {globalVisitedCountries.toLocaleString("zh-CN")} /{" "}
+                  {countries.length
+                    ? countries.length.toLocaleString("zh-CN")
+                    : "—"}
+                </b>
+                国家 · COUNTRIES
+              </span>
+              <span>
+                <b>
+                  {globalVisitedCities.toLocaleString("zh-CN")} /{" "}
+                  {cityCatalog?.total
+                    ? cityCatalog.total.toLocaleString("zh-CN")
+                    : "—"}
+                </b>
+                收录城市 · CITIES
+              </span>
+            </div>
+          )}
+
+          <small>
+            城市口径：人口 &gt; 15,000 或行政首府 · GEONAMES
+            {subdivisions.length > 0 ? " · BOUNDARIES: GEOBOUNDARIES" : ""}
+          </small>
+        </section>
 
         <div className="static-map-mode-note">
           <strong>
