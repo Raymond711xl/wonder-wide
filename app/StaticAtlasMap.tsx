@@ -5,10 +5,9 @@ import {
   useEffect,
   useImperativeHandle,
   useMemo,
-  useRef,
   useState,
 } from "react";
-import type { KeyboardEvent, MouseEvent } from "react";
+import type { KeyboardEvent } from "react";
 import type {
   ActiveCountry,
   AtlasGeometry,
@@ -16,7 +15,7 @@ import type {
   CityVisit,
   TravelType,
 } from "./atlas-data";
-import { travelTypeScore } from "./atlas-data";
+import { normalizeCountryName, travelTypeScore } from "./atlas-data";
 
 const MAP_WIDTH = 1400;
 const MAP_HEIGHT = 760;
@@ -46,6 +45,7 @@ type CountryProperties = {
   ADMIN?: string;
   LABEL_X?: number;
   LABEL_Y?: number;
+  CONTINENT?: string;
 };
 
 type CountryFeature = {
@@ -62,6 +62,7 @@ type CountryCollection = {
 type ProjectedCountry = {
   code: string;
   name: string;
+  regionPattern: string;
   path: string;
   bounds: ProjectedBounds;
   labelX: number;
@@ -83,11 +84,9 @@ type StaticAtlasMapProps = {
   candidate: CityCandidate | null;
   featuredCities: CityCandidate[];
   countryMetrics: CountryMetric[];
-  pickMode: boolean;
   onCountrySelect: (country: ActiveCountry) => void;
   onCityOpen: (city: CityCandidate) => void;
-  onPointPick: (longitude: number, latitude: number) => void;
-  onReady?: () => void;
+  onCityEdit: (city: CityVisit) => void;
 };
 
 export type StaticAtlasMapHandle = {
@@ -123,15 +122,6 @@ export function projectCoordinate(longitude: number, latitude: number) {
       ((MAX_LATITUDE - clamp(latitude, MIN_LATITUDE, MAX_LATITUDE)) /
         (MAX_LATITUDE - MIN_LATITUDE)) *
       MAP_HEIGHT,
-  };
-}
-
-function unprojectCoordinate(x: number, y: number) {
-  return {
-    longitude: (x / MAP_WIDTH) * 360 - 180,
-    latitude:
-      MAX_LATITUDE -
-      (y / MAP_HEIGHT) * (MAX_LATITUDE - MIN_LATITUDE),
   };
 }
 
@@ -299,8 +289,22 @@ function aggregateVisits(visits: CityVisit[], countryCode: string) {
   return [...aggregates.values()];
 }
 
-function heatFill(level?: number) {
-  return level ? `url(#country-heat-${level})` : "#ece9df";
+function regionPattern(continent?: string) {
+  const patterns: Record<string, string> = {
+    Asia: "asia",
+    Europe: "europe",
+    Africa: "africa",
+    "North America": "north-america",
+    "South America": "south-america",
+    Oceania: "oceania",
+  };
+  return patterns[continent ?? ""] ?? "other";
+}
+
+function countryFill(country: ProjectedCountry, level?: number) {
+  return level
+    ? `url(#country-heat-${level})`
+    : `url(#region-${country.regionPattern})`;
 }
 
 function keyboardActivate(
@@ -321,15 +325,12 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
       candidate,
       featuredCities,
       countryMetrics,
-      pickMode,
       onCountrySelect,
       onCityOpen,
-      onPointPick,
-      onReady,
+      onCityEdit,
     },
     ref,
   ) {
-    const svgRef = useRef<SVGSVGElement | null>(null);
     const [countries, setCountries] = useState<ProjectedCountry[]>([]);
     const [viewBox, setViewBox] = useState<ViewBox>(WORLD_VIEW);
     const [loadError, setLoadError] = useState(false);
@@ -380,7 +381,8 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
                     };
               return {
                 code,
-                name: code === "CN" ? "中国" : name,
+                name: normalizeCountryName(name, code),
+                regionPattern: regionPattern(feature.properties.CONTINENT),
                 path: geometryPath(feature.geometry),
                 bounds,
                 labelX: label.x,
@@ -400,7 +402,6 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
             china.name = "中国";
           }
           setCountries(projected.filter((country) => country.code !== "TW"));
-          onReady?.();
         })
         .catch(() => {
           if (!cancelled) setLoadError(true);
@@ -408,7 +409,7 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
       return () => {
         cancelled = true;
       };
-    }, [onReady]);
+    }, []);
 
     useEffect(() => {
       if (countries.length === 0) return;
@@ -500,68 +501,75 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
     // anchor itself stays in the map's SVG coordinate system at every zoom.
     const markerScale = clamp(viewBox.width / MAP_WIDTH, 0.085, 1);
 
-    function pointFromEvent(event: MouseEvent<SVGElement>) {
-      const svg = svgRef.current;
-      const matrix = svg?.getScreenCTM();
-      if (!svg || !matrix) return null;
-      const point = svg.createSVGPoint();
-      point.x = event.clientX;
-      point.y = event.clientY;
-      const local = point.matrixTransform(matrix.inverse());
-      return unprojectCoordinate(local.x, local.y);
-    }
-
-    function pickAtEvent(event: MouseEvent<SVGElement>) {
-      const location = pointFromEvent(event);
-      if (location) onPointPick(location.longitude, location.latitude);
-    }
-
     return (
       <div
-        className={`static-atlas-map ${pickMode ? "is-picking" : ""}`}
+        className="static-atlas-map"
         role="region"
-        aria-label="两级静态世界足迹地图"
+        aria-label="晃悠双视图旅行地图"
         data-map-mode={activeCountry ? "country" : "world"}
       >
         <svg
-          ref={svgRef}
           viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`}
           preserveAspectRatio="xMidYMid meet"
           aria-label={
             activeCountry
-              ? `${activeCountry.name}城市级静态地图`
-              : "国家级静态世界地图"
+              ? `${activeCountry.name}城市地图`
+              : "全球国家地图"
           }
-          onClick={(event) => {
-            if (pickMode && event.target === event.currentTarget) {
-              pickAtEvent(event);
-            }
-          }}
         >
           <defs>
             <linearGradient id="country-heat-1" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor="#f6d889" />
-              <stop offset="100%" stopColor="#e8b45c" />
+              <stop offset="0%" stopColor="#ffe56f" />
+              <stop offset="100%" stopColor="#ffae45" />
             </linearGradient>
             <linearGradient id="country-heat-2" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor="#efb969" />
-              <stop offset="100%" stopColor="#d77a49" />
+              <stop offset="0%" stopColor="#ff9fc1" />
+              <stop offset="100%" stopColor="#ff4f7b" />
             </linearGradient>
             <linearGradient id="country-heat-3" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor="#d97850" />
-              <stop offset="100%" stopColor="#ad4439" />
+              <stop offset="0%" stopColor="#9b78ff" />
+              <stop offset="100%" stopColor="#6b3dff" />
             </linearGradient>
             <linearGradient id="country-heat-4" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor="#9b3e38" />
-              <stop offset="100%" stopColor="#542a32" />
+              <stop offset="0%" stopColor="#43266f" />
+              <stop offset="100%" stopColor="#1d1537" />
             </linearGradient>
+            <pattern id="region-asia" width="20" height="20" patternUnits="userSpaceOnUse">
+              <rect width="20" height="20" fill="#ffe38a" />
+              <circle cx="5" cy="5" r="1.4" fill="#ef8f48" fillOpacity=".34" />
+              <circle cx="15" cy="15" r="1.4" fill="#ef8f48" fillOpacity=".34" />
+            </pattern>
+            <pattern id="region-europe" width="18" height="18" patternUnits="userSpaceOnUse">
+              <rect width="18" height="18" fill="#cfb8ff" />
+              <path d="M-3 18 18-3M6 21 21 6" stroke="#7558bf" strokeOpacity=".22" strokeWidth="2" />
+            </pattern>
+            <pattern id="region-africa" width="22" height="22" patternUnits="userSpaceOnUse">
+              <rect width="22" height="22" fill="#ffb9a7" />
+              <path d="m2 11 4-4 4 4-4 4Zm12 0 4-4 4 4-4 4Z" fill="#d75a69" fillOpacity=".18" />
+            </pattern>
+            <pattern id="region-north-america" width="20" height="20" patternUnits="userSpaceOnUse">
+              <rect width="20" height="20" fill="#9ce7bf" />
+              <path d="M0 10h20M10 0v20" stroke="#2f9876" strokeOpacity=".18" strokeWidth="1.5" />
+            </pattern>
+            <pattern id="region-south-america" width="19" height="19" patternUnits="userSpaceOnUse">
+              <rect width="19" height="19" fill="#ffc978" />
+              <circle cx="9.5" cy="9.5" r="4" fill="none" stroke="#da7a2f" strokeOpacity=".22" strokeWidth="1.5" />
+            </pattern>
+            <pattern id="region-oceania" width="20" height="20" patternUnits="userSpaceOnUse">
+              <rect width="20" height="20" fill="#89d9ff" />
+              <path d="M0 15c5-6 10-6 15 0s10 6 15 0" fill="none" stroke="#3478b8" strokeOpacity=".24" strokeWidth="1.5" />
+            </pattern>
+            <pattern id="region-other" width="18" height="18" patternUnits="userSpaceOnUse">
+              <rect width="18" height="18" fill="#d9d5ea" />
+              <circle cx="9" cy="9" r="1.2" fill="#625d83" fillOpacity=".2" />
+            </pattern>
             <pattern
               id="atlas-grid"
               width="38"
               height="38"
               patternUnits="userSpaceOnUse"
             >
-              <path d="M 38 0 L 0 0 0 38" fill="none" stroke="#1b4646" strokeOpacity=".045" />
+              <path d="M 38 0 L 0 0 0 38" fill="none" stroke="#241a4f" strokeOpacity=".075" />
             </pattern>
           </defs>
 
@@ -573,7 +581,7 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
               const metric = metricByCode.get(country.code);
               const isActive = activeCountry?.code === country.code;
               const isDimmed = Boolean(activeCountry && !isActive);
-              const canEnterCountry = !activeCountry && !pickMode;
+              const canEnterCountry = !activeCountry;
               const activate = () => {
                 if (!canEnterCountry) return;
                 onCountrySelect({ code: country.code, name: country.name });
@@ -594,14 +602,10 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
                     .filter(Boolean)
                     .join(" ")}
                   fillRule="evenodd"
-                  style={{ fill: heatFill(metric?.heatLevel) }}
+                  style={{ fill: countryFill(country, metric?.heatLevel) }}
                   onClick={(event) => {
                     event.stopPropagation();
-                    if (pickMode) {
-                      pickAtEvent(event);
-                    } else if (canEnterCountry) {
-                      activate();
-                    }
+                    if (canEnterCountry) activate();
                   }}
                   onKeyDown={
                     canEnterCountry
@@ -679,7 +683,13 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
                     key={visitKey(aggregate.city)}
                     className="static-city-marker is-visited"
                     transform={`translate(${point.x} ${point.y}) scale(${markerScale})`}
-                    aria-label={`${aggregate.city.name}，${aggregate.travelType}，${aggregate.landmarks}个景点`}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`修改${aggregate.city.name}的到访记录`}
+                    onClick={() => onCityEdit(aggregate.city)}
+                    onKeyDown={(event) =>
+                      keyboardActivate(event, () => onCityEdit(aggregate.city))
+                    }
                   >
                     <circle className="city-halo" r="16" />
                     <circle className="city-sequence" r="11" />
@@ -751,11 +761,15 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
         </svg>
 
         <div className="static-map-mode-note">
-          <strong>{activeCountry ? `${activeCountry.name} · 城市层` : "世界 · 国家层"}</strong>
+          <strong>
+            {activeCountry
+              ? `${activeCountry.name} · CITIES`
+              : "全球 · THE WORLD"}
+          </strong>
           <span>
             {activeCountry
-              ? "城市节点固定在国家地图上；点击节点不会再次放大"
-              : "颜色越深，代表这个国家的足迹越丰富"}
+              ? "点击去过的城市即可修改 · TAP A CITY TO EDIT"
+              : "颜色越深，这块地越熟 · DEEPER MEANS MORE"}
           </span>
         </div>
 

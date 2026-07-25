@@ -3,19 +3,20 @@
 import {
   ArrowLeft,
   ArrowRight,
+  Award,
   Building2,
   CalendarDays,
   Check,
   ChevronDown,
   ChevronRight,
   Compass,
-  Crosshair,
   Globe2,
   Landmark,
   LoaderCircle,
   LocateFixed,
   MapPin,
   Minus,
+  Pencil,
   Plus,
   RotateCcw,
   Search,
@@ -36,7 +37,9 @@ import StaticAtlasMap, {
 } from "./StaticAtlasMap";
 import {
   FEATURED_CITIES,
+  formatLocationSubtitle,
   LANDMARKS_BY_CITY,
+  normalizeCountryName,
   TRAVEL_TYPE_OPTIONS,
   travelTypeScore,
   type ActiveCountry,
@@ -73,6 +76,46 @@ type NominatimResult = {
 type CountryGroup = {
   metric: CountryMetric;
   visits: CityVisit[];
+};
+
+type RoamingBadge = {
+  key: "starter" | "china" | "abroad-once" | "abroad-often" | "global-local";
+  title: string;
+  english: string;
+  description: string;
+};
+
+const ROAMING_BADGES: Record<RoamingBadge["key"], RoamingBadge> = {
+  starter: {
+    key: "starter",
+    title: "待出门",
+    english: "READY TO ROAM",
+    description: "第一枚城市图钉正在等你",
+  },
+  china: {
+    key: "china",
+    title: "神州晃客",
+    english: "CHINA ROAMER",
+    description: "先把家门口晃明白",
+  },
+  "abroad-once": {
+    key: "abroad-once",
+    title: "出境试水员",
+    english: "BORDER TESTER",
+    description: "地球副本已经解锁",
+  },
+  "abroad-often": {
+    key: "abroad-often",
+    title: "地球串门王",
+    english: "WORLD HOPPER",
+    description: "护照已经很有故事",
+  },
+  "global-local": {
+    key: "global-local",
+    title: "异乡生活家",
+    english: "GLOBAL LOCAL",
+    description: "不只路过，也认真生活过",
+  },
 };
 
 function todayISO() {
@@ -113,6 +156,12 @@ function normalizeCityName(value: string) {
   return value.trim().toLowerCase();
 }
 
+function cityNameStem(value: string) {
+  return normalizeCityName(value)
+    .replace(/[市區区縣县]$/u, "")
+    .replace(/[·•・／/\s]/g, "");
+}
+
 function cityKey(city: Pick<CityCandidate, "countryCode" | "name">) {
   return `${city.countryCode}:${normalizeCityName(city.name)}`;
 }
@@ -150,7 +199,7 @@ function buildCountryMetrics(visits: CityVisit[]): CountryMetric[] {
 
   visits.forEach((visit) => {
     const current = accumulators.get(visit.countryCode) ?? {
-      name: visit.country,
+      name: normalizeCountryName(visit.country, visit.countryCode),
       cities: new Set<string>(),
       landmarks: new Set<string>(),
       cityScores: new Map<string, number>(),
@@ -203,7 +252,43 @@ function travelTypeDescription(travelType: TravelType) {
 }
 
 function landmarksForCity(city: CityCandidate) {
-  return LANDMARKS_BY_CITY[`${city.countryCode}:${city.name}`] ?? [];
+  const direct = LANDMARKS_BY_CITY[`${city.countryCode}:${city.name}`];
+  if (direct) return direct;
+
+  const namedMatch = FEATURED_CITIES.find(
+    (featured) =>
+      featured.countryCode === city.countryCode &&
+      cityNameStem(featured.name) === cityNameStem(city.name),
+  );
+  const nearbyMatch = FEATURED_CITIES.filter(
+    (featured) => featured.countryCode === city.countryCode,
+  )
+    .map((featured) => ({
+      featured,
+      distance:
+        (featured.longitude - city.longitude) ** 2 +
+        (featured.latitude - city.latitude) ** 2,
+    }))
+    .sort((left, right) => left.distance - right.distance)
+    .find((match) => match.distance < 1.5)?.featured;
+  const knownCity = namedMatch ?? nearbyMatch;
+  return knownCity
+    ? LANDMARKS_BY_CITY[`${knownCity.countryCode}:${knownCity.name}`] ?? []
+    : [];
+}
+
+function roamingBadgeFor(visits: CityVisit[]) {
+  const overseasVisits = visits.filter(
+    (visit) => visit.countryCode !== "CN",
+  );
+  const hasLivedAbroad = overseasVisits.some((visit) =>
+    ["短居 / 留学", "常住"].includes(visit.travelType),
+  );
+  if (hasLivedAbroad) return ROAMING_BADGES["global-local"];
+  if (overseasVisits.length >= 2) return ROAMING_BADGES["abroad-often"];
+  if (overseasVisits.length === 1) return ROAMING_BADGES["abroad-once"];
+  if (visits.length > 0) return ROAMING_BADGES.china;
+  return ROAMING_BADGES.starter;
 }
 
 function normalizeCityResult(result: NominatimResult): CityCandidate | null {
@@ -219,8 +304,8 @@ function normalizeCityResult(result: NominatimResult): CityCandidate | null {
   const sourceCountryCode = address.country_code?.toUpperCase();
   if (!cityName || !sourceCountry || !sourceCountryCode) return null;
   const isTaiwan = sourceCountryCode === "TW";
-  const country = isTaiwan ? "中国" : sourceCountry;
   const countryCode = isTaiwan ? "CN" : sourceCountryCode;
+  const country = normalizeCountryName(sourceCountry, countryCode);
 
   const region =
     address.state ??
@@ -251,7 +336,7 @@ function normalizeCityResult(result: NominatimResult): CityCandidate | null {
     country,
     countryCode,
     region,
-    subtitle: [region, country].filter(Boolean).join(" · "),
+    subtitle: formatLocationSubtitle(region, country),
     longitude: Number(result.lon),
     latitude: Number(result.lat),
     bbox,
@@ -309,16 +394,20 @@ function migrateVisits(value: unknown): CityVisit[] {
       ? (requestedTravelType as TravelType)
       : legacyTravelTypes[String(stored.stayTag ?? "")] ?? "旅游";
     const isTaiwan = stored.countryCode.toUpperCase() === "TW";
-    const country = isTaiwan ? "中国" : String(stored.country ?? "");
+    const countryCode = isTaiwan ? "CN" : stored.countryCode.toUpperCase();
+    const country = normalizeCountryName(
+      String(stored.country ?? countryCode),
+      countryCode,
+    );
     const region = stored.region ?? (isTaiwan ? "台湾" : undefined);
 
     return [
       {
         ...(stored as CityVisit),
-        countryCode: isTaiwan ? "CN" : stored.countryCode.toUpperCase(),
+        countryCode,
         country,
         region,
-        subtitle: [region, country].filter(Boolean).join(" · "),
+        subtitle: formatLocationSubtitle(region, country),
         travelType,
         landmarks: Array.isArray(stored.landmarks) ? stored.landmarks : [],
       },
@@ -328,7 +417,6 @@ function migrateVisits(value: unknown): CityVisit[] {
 
 export default function AtlasExplorer() {
   const mapRef = useRef<StaticAtlasMapHandle | null>(null);
-  const [mapReady, setMapReady] = useState(false);
   const [visits, setVisits] = useState<CityVisit[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const [activeCountry, setActiveCountry] = useState<ActiveCountry | null>(null);
@@ -336,9 +424,8 @@ export default function AtlasExplorer() {
   const [searchResults, setSearchResults] = useState<CityCandidate[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState("");
-  const [pickMode, setPickMode] = useState(false);
-  const [lookupLoading, setLookupLoading] = useState(false);
   const [candidate, setCandidate] = useState<CityCandidate | null>(null);
+  const [editingVisitId, setEditingVisitId] = useState<string | null>(null);
   const [visitDate, setVisitDate] = useState("");
   const [visitTravelType, setVisitTravelType] =
     useState<TravelType>("旅游");
@@ -354,6 +441,7 @@ export default function AtlasExplorer() {
   const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
 
   const countryMetrics = useMemo(() => buildCountryMetrics(visits), [visits]);
+  const roamingBadge = useMemo(() => roamingBadgeFor(visits), [visits]);
   const metricByCode = useMemo(
     () => new Map(countryMetrics.map((metric) => [metric.code, metric])),
     [countryMetrics],
@@ -410,29 +498,65 @@ export default function AtlasExplorer() {
     : undefined;
 
   const showToast = useCallback((message: string) => setToast(message), []);
-  const handleMapReady = useCallback(() => setMapReady(true), []);
 
   const selectCountry = useCallback((country: ActiveCountry) => {
-    setActiveCountry(country);
+    setActiveCountry({
+      code: country.code,
+      name: normalizeCountryName(country.name, country.code),
+    });
     setCandidate(null);
+    setEditingVisitId(null);
     setSearchResults([]);
     setSearchError("");
-    setPickMode(false);
   }, []);
 
   const selectCityCandidate = useCallback((city: CityCandidate) => {
-    setCandidate(city);
-    setActiveCountry({ code: city.countryCode, name: city.country });
+    const country = normalizeCountryName(city.country, city.countryCode);
+    const normalizedCity = {
+      ...city,
+      country,
+      subtitle: formatLocationSubtitle(city.region, country),
+    };
+    setCandidate(normalizedCity);
+    setEditingVisitId(null);
+    setActiveCountry({ code: city.countryCode, name: country });
     setVisitDate(todayISO());
     setVisitTravelType("旅游");
-    setLandmarkOptions(landmarksForCity(city));
+    setLandmarkOptions(landmarksForCity(normalizedCity));
     setSelectedLandmarks([]);
     setLandmarkQuery("");
     setLandmarkError("");
-    setLandmarksOpen(false);
+    setLandmarksOpen(true);
     setSearchResults([]);
     setSearchError("");
-    setPickMode(false);
+  }, []);
+
+  const openVisitEditor = useCallback((visit: CityVisit) => {
+    const country = normalizeCountryName(visit.country, visit.countryCode);
+    const normalizedVisit = {
+      ...visit,
+      country,
+      subtitle: formatLocationSubtitle(visit.region, country),
+    };
+    const recommendations = landmarksForCity(normalizedVisit);
+    const mergedLandmarks = new Map(
+      [...recommendations, ...visit.landmarks].map((landmark) => [
+        landmark.id,
+        landmark,
+      ]),
+    );
+    setCandidate(normalizedVisit);
+    setEditingVisitId(visit.visitId);
+    setActiveCountry({ code: visit.countryCode, name: country });
+    setVisitDate(visit.visitedOn);
+    setVisitTravelType(visit.travelType);
+    setLandmarkOptions([...mergedLandmarks.values()]);
+    setSelectedLandmarks(visit.landmarks);
+    setLandmarkQuery("");
+    setLandmarkError("");
+    setLandmarksOpen(true);
+    setSearchResults([]);
+    setSearchError("");
   }, []);
 
   const openCity = useCallback(
@@ -522,51 +646,14 @@ export default function AtlasExplorer() {
       const normalized = [...unique.values()].slice(0, 6);
       setSearchResults(normalized);
       if (normalized.length === 0) {
-        setSearchError("没有找到城市。可以换一个名称，或在地图上选择。");
+        setSearchError("没有找到城市，换个名字再搜一次吧。");
       }
     } catch {
-      setSearchError("城市搜索暂时不可用，可以在地图上选择城市。");
+      setSearchError("城市搜索暂时走丢了，请稍后再试。");
     } finally {
       setSearching(false);
     }
   }
-
-  const handlePointPick = useCallback(
-    async (longitude: number, latitude: number) => {
-      setLookupLoading(true);
-      try {
-        const params = new URLSearchParams({
-          format: "jsonv2",
-          lat: String(latitude),
-          lon: String(longitude),
-          zoom: "10",
-          addressdetails: "1",
-          polygon_geojson: "1",
-          polygon_threshold: "0.01",
-          "accept-language": "zh-CN,zh,en",
-        });
-        const response = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?${params.toString()}`,
-          { headers: { Accept: "application/json" } },
-        );
-        if (!response.ok) throw new Error("City lookup failed");
-        const city = normalizeCityResult(
-          (await response.json()) as NominatimResult,
-        );
-        if (!city) throw new Error("No city found");
-        selectCityCandidate(city);
-        window.requestAnimationFrame(() =>
-          mapRef.current?.focusCountry(city.countryCode),
-        );
-      } catch {
-        showToast("没有辨认出城市，请使用上方搜索");
-      } finally {
-        setLookupLoading(false);
-        setPickMode(false);
-      }
-    },
-    [selectCityCandidate, showToast],
-  );
 
   async function handleLandmarkSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -646,7 +733,16 @@ export default function AtlasExplorer() {
     setVisitDate(makeISODate(year, month, day));
   }
 
-  function addCandidateVisit() {
+  function closeComposer() {
+    setCandidate(null);
+    setEditingVisitId(null);
+    setSelectedLandmarks([]);
+    setLandmarkOptions([]);
+    setLandmarkQuery("");
+    setLandmarkError("");
+  }
+
+  function saveCandidateVisit() {
     if (!candidate) return;
     if (!visitDate) {
       showToast("请选择到访日期");
@@ -654,6 +750,7 @@ export default function AtlasExplorer() {
     }
     const duplicate = visits.some(
       (visit) =>
+        visit.visitId !== editingVisitId &&
         visit.countryCode === candidate.countryCode &&
         normalizeCityName(visit.name) === normalizeCityName(candidate.name) &&
         visit.visitedOn === visitDate,
@@ -665,39 +762,48 @@ export default function AtlasExplorer() {
 
     const visit: CityVisit = {
       ...candidate,
-      visitId: `${candidate.id}-${visitDate}-${Date.now()}`,
+      visitId:
+        editingVisitId ?? `${candidate.id}-${visitDate}-${Date.now()}`,
       visitedOn: visitDate,
       travelType: visitTravelType,
       landmarks: selectedLandmarks,
     };
-    setVisits((current) => [...current, visit]);
-    setCandidate(null);
-    setSelectedLandmarks([]);
-    setLandmarkOptions([]);
-    setLandmarkQuery("");
+    setVisits((current) =>
+      editingVisitId
+        ? current.map((item) =>
+            item.visitId === editingVisitId ? visit : item,
+          )
+        : [...current, visit],
+    );
+    const wasEditing = Boolean(editingVisitId);
+    closeComposer();
     setQuery("");
-    showToast(`已记录 ${candidate.country} · ${candidate.name}`);
+    showToast(
+      wasEditing
+        ? `已更新 ${candidate.country} · ${candidate.name}`
+        : `已记录 ${candidate.country} · ${candidate.name}`,
+    );
   }
 
   function removeVisit(visitId: string) {
     setVisits((current) =>
       current.filter((visit) => visit.visitId !== visitId),
     );
+    if (editingVisitId === visitId) closeComposer();
     showToast("已移除这次城市记录");
   }
 
   function resetWorldView() {
     setActiveCountry(null);
-    setCandidate(null);
+    closeComposer();
     setSearchResults([]);
     setSearchError("");
-    setPickMode(false);
     mapRef.current?.reset();
   }
 
   function showAllFootprints() {
     setActiveCountry(null);
-    setCandidate(null);
+    closeComposer();
     mapRef.current?.reset();
   }
 
@@ -710,11 +816,9 @@ export default function AtlasExplorer() {
         candidate={candidate}
         featuredCities={FEATURED_CITIES}
         countryMetrics={countryMetrics}
-        pickMode={pickMode}
         onCountrySelect={selectCountry}
         onCityOpen={openCity}
-        onPointPick={handlePointPick}
-        onReady={handleMapReady}
+        onCityEdit={openVisitEditor}
       />
 
       {activeCountry ? (
@@ -727,8 +831,8 @@ export default function AtlasExplorer() {
             <ArrowLeft size={19} />
           </span>
           <span>
-            <strong>返回世界地图</strong>
-            <small>退出 {activeCountry.name} 城市层</small>
+            <strong>返回全球 · BACK TO WORLD</strong>
+            <small>离开 {activeCountry.name} · LEAVE COUNTRY</small>
           </span>
         </button>
       ) : null}
@@ -744,17 +848,19 @@ export default function AtlasExplorer() {
             <Compass size={18} strokeWidth={2.2} />
           </span>
           <span className="atlas-v2-brand-copy">
-            <strong>远迹</strong>
-            <small>FOOTPRINT ATLAS</small>
+            <strong>晃悠</strong>
+            <small>WANDER WIDE</small>
           </span>
         </button>
 
-        <div className="atlas-v2-step" aria-label="当前地图架构">
-          <span>{activeCountry ? "02" : "01"}</span>
+        <div className="atlas-v2-step" aria-label="当前地图视图">
+          <span>
+            {activeCountry ? <MapPin size={14} /> : <Globe2 size={14} />}
+          </span>
           <p>
-            {activeCountry ? "城市层" : "国家层"}
+            {activeCountry ? "城市 · CITIES" : "国家 · COUNTRIES"}
             <small>
-              {activeCountry ? "查看城市与到访记录" : "按国家足迹浏览世界"}
+              {activeCountry ? "看你在这里怎么晃" : "看看地球熟到哪了"}
             </small>
           </p>
         </div>
@@ -822,8 +928,8 @@ export default function AtlasExplorer() {
             ) : (
               <>
                 <header>
-                  <span>城市结果</span>
-                  <small>添加后进入国家的城市层</small>
+                  <span>城市结果 · CITY RESULTS</span>
+                  <small>选一座，继续补全记录</small>
                 </header>
                 {searchResults.map((city) => (
                   <button
@@ -850,9 +956,9 @@ export default function AtlasExplorer() {
 
       <nav
         className={`atlas-v2-breadcrumb ${activeCountry ? "has-country" : ""}`}
-        aria-label="地图层级"
+        aria-label="地图位置"
       >
-        <strong>{activeCountry?.name ?? "世界"}</strong>
+        <strong>{activeCountry?.name ?? "全球 · WORLD"}</strong>
         {candidate ? (
           <>
             <ChevronRight size={13} />
@@ -863,8 +969,8 @@ export default function AtlasExplorer() {
           {candidate
             ? "补充日期、出游性质与景点"
             : activeCountry
-              ? "城市级静态地图"
-              : "国家级静态地图"}
+              ? "城市地图 · CITY MAP"
+              : "国家地图 · COUNTRY MAP"}
         </span>
       </nav>
 
@@ -875,34 +981,51 @@ export default function AtlasExplorer() {
         <div className="atlas-v2-panel-intro">
           <span className="atlas-v2-eyebrow">
             <Sparkles size={13} />
-            一张不漂移的两级足迹地图
+            WANDER WIDE · 在地球上瞎晃的正经记录
           </span>
           <h1>
-            国家看热度，
+            这地球，
             <br />
-            城市看故事。
+            咱晃过。
           </h1>
           <p>
-            世界层查看国家足迹；进入国家后，再看城市、出游性质与景点记录。
+            点国家、搜城市、记下到访方式。
+            <br />
+            BEEN THERE. WANDERED THAT.
           </p>
         </div>
+
+        <section
+          className={`atlas-v2-roaming-badge badge-${roamingBadge.key}`}
+          aria-label={`当前称号：${roamingBadge.title}`}
+        >
+          <span className="atlas-v2-roaming-badge-icon">
+            <Award size={18} />
+          </span>
+          <span>
+            <small>你的晃悠称号 · YOUR ROAMING TITLE</small>
+            <strong>{roamingBadge.title}</strong>
+            <em>{roamingBadge.english}</em>
+          </span>
+          <p>{roamingBadge.description}</p>
+        </section>
 
         <div className="atlas-v2-stats" aria-label="足迹统计">
           <div>
             <strong>{String(stats.countries).padStart(2, "0")}</strong>
-            <span>国家</span>
+            <span>国家 <small>COUNTRIES</small></span>
           </div>
           <div>
             <strong>{String(stats.cities).padStart(2, "0")}</strong>
-            <span>城市</span>
+            <span>城市 <small>CITIES</small></span>
           </div>
           <div>
             <strong>{String(stats.landmarks).padStart(2, "0")}</strong>
-            <span>地标</span>
+            <span>景点 <small>SPOTS</small></span>
           </div>
           <div>
             <strong>{String(stats.visits).padStart(2, "0")}</strong>
-            <span>到访</span>
+            <span>到访 <small>TRIPS</small></span>
           </div>
         </div>
 
@@ -915,7 +1038,7 @@ export default function AtlasExplorer() {
               <Globe2 size={18} />
             </div>
             <div>
-              <small>当前国家 · 城市层</small>
+              <small>正在晃悠 · NOW ROAMING</small>
               <strong>{activeCountry.name}</strong>
               <span>
                 {activeMetric
@@ -929,13 +1052,13 @@ export default function AtlasExplorer() {
         <section className="atlas-v2-panel-section">
           <div className="atlas-v2-section-title">
             <div>
-              <span>我的足迹档案</span>
-              <small>{visits.length} 次到访记录</small>
+              <span>我的晃悠档案 · MY ROAMS</span>
+              <small>{visits.length} 次到访记录 · TRIPS</small>
             </div>
             {visits.length > 0 ? (
               <button type="button" onClick={showAllFootprints}>
                 <LocateFixed size={15} />
-                国家总览
+                全球总览
               </button>
             ) : null}
           </div>
@@ -946,8 +1069,8 @@ export default function AtlasExplorer() {
                 <Globe2 size={26} />
                 <span />
               </div>
-              <strong>从第一座城市开始记录足迹</strong>
-              <p>选择到访日期与出游性质，景点可以稍后再补。</p>
+              <strong>先随便晃一座城市</strong>
+              <p>选日期与到访方式，我们会顺手推荐景点。</p>
               <div className="atlas-v2-suggestions">
                 {FEATURED_CITIES.slice(0, 4).map((city) => (
                   <button
@@ -988,7 +1111,12 @@ export default function AtlasExplorer() {
                   <ol>
                     {countryVisits.map((visit, index) => (
                       <li key={visit.visitId}>
-                        <div className="atlas-v2-visit-main">
+                        <button
+                          type="button"
+                          className="atlas-v2-visit-main"
+                          onClick={() => openVisitEditor(visit)}
+                          aria-label={`修改 ${visit.name} 的到访记录`}
+                        >
                           <span className="atlas-v2-visit-index">
                             {String(index + 1).padStart(2, "0")}
                           </span>
@@ -1009,7 +1137,7 @@ export default function AtlasExplorer() {
                             <Landmark size={12} />
                             {visit.landmarks.length}
                           </span>
-                        </div>
+                        </button>
                         <button
                           type="button"
                           className="atlas-v2-remove"
@@ -1027,6 +1155,10 @@ export default function AtlasExplorer() {
                                   .join(" · ")
                               : "仅记录城市"}
                           </span>
+                          <span className="atlas-v2-edit-cue">
+                            <Pencil size={11} />
+                            修改 · EDIT
+                          </span>
                         </div>
                       </li>
                     ))}
@@ -1040,15 +1172,6 @@ export default function AtlasExplorer() {
         <div className="atlas-v2-panel-footer">
           <button
             type="button"
-            className={`atlas-v2-pick-button ${pickMode ? "is-active" : ""}`}
-            onClick={() => setPickMode((current) => !current)}
-            disabled={!mapReady}
-          >
-            {pickMode ? <X size={17} /> : <Crosshair size={17} />}
-            {pickMode ? "退出地图选择" : "地图选城市"}
-          </button>
-          <button
-            type="button"
             className="atlas-v2-next-button"
             disabled={visits.length === 0}
             onClick={() =>
@@ -1057,7 +1180,7 @@ export default function AtlasExplorer() {
               )
             }
           >
-            完成城市选择
+            生成我的晃悠地图 · MAKE MY MAP
             <ArrowRight size={17} />
           </button>
         </div>
@@ -1084,59 +1207,49 @@ export default function AtlasExplorer() {
         </button>
       </div>
 
-      <div className="atlas-v2-map-legend" aria-label="国家热度图例">
-        <b>国家足迹密度</b>
+      <div className="atlas-v2-map-legend" aria-label="国家熟度图例">
+        <b>国家熟度 · DONENESS</b>
         <span>
           <i className="heat-1" />
-          较少
+          三分熟 <small>RARE</small>
         </span>
         <span>
           <i className="heat-2" />
-          渐多
+          五分熟 <small>MEDIUM</small>
         </span>
         <span>
           <i className="heat-3" />
-          丰富
+          七分熟 <small>MED-WELL</small>
         </span>
         <span>
           <i className="heat-4" />
-          密集
+          全熟 <small>WELL-DONE</small>
         </span>
       </div>
 
-      {pickMode ? (
-        <div className="atlas-v2-pick-hint">
-          <Crosshair size={17} />
-          <span>点击静态地图上的位置，系统会识别城市</span>
-          <button type="button" onClick={() => setPickMode(false)}>
-            取消
-          </button>
-        </div>
-      ) : null}
-
-      {lookupLoading ? (
-        <div className="atlas-v2-lookup">
-          <LoaderCircle className="spinning" size={18} />
-          正在识别城市…
-        </div>
-      ) : null}
-
       {candidate ? (
-        <section className="atlas-v2-composer" aria-label="添加城市到访">
+        <section
+          className="atlas-v2-composer"
+          aria-label={editingVisitId ? "修改城市到访" : "添加城市到访"}
+        >
           <header>
             <span className="atlas-v2-candidate-icon">
               <Building2 size={19} />
             </span>
             <div>
-              <small>添加城市到访</small>
+              <small>
+                {editingVisitId
+                  ? "修改这次晃悠 · EDIT THIS ROAM"
+                  : "添加城市到访 · ADD A CITY"}
+              </small>
               <h2>{candidate.name}</h2>
               <p>{candidate.subtitle}</p>
             </div>
             <button
               type="button"
               className="atlas-v2-icon-button"
-              onClick={() => setCandidate(null)}
-              aria-label="关闭城市添加面板"
+              onClick={closeComposer}
+              aria-label="关闭城市编辑面板"
             >
               <X size={17} />
             </button>
@@ -1145,7 +1258,7 @@ export default function AtlasExplorer() {
           <div className="atlas-v2-date-field">
             <span>
               <CalendarDays size={15} />
-              到访日期
+              到访日期 · DATE
             </span>
             <div className="atlas-v2-date-selects">
               <label>
@@ -1206,7 +1319,7 @@ export default function AtlasExplorer() {
           <fieldset className="atlas-v2-travel-picker">
             <legend>
               <MapPin size={15} />
-              出游性质
+              怎么晃的 · TRIP TYPE
             </legend>
             <div>
               {TRAVEL_TYPE_OPTIONS.map((option) => (
@@ -1218,9 +1331,10 @@ export default function AtlasExplorer() {
                   }
                   aria-pressed={visitTravelType === option.value}
                   onClick={() => setVisitTravelType(option.value)}
+                  title={option.description}
                 >
                   <strong>{option.label}</strong>
-                  <small>{option.description}</small>
+                  <small>{option.english}</small>
                 </button>
               ))}
             </div>
@@ -1235,11 +1349,13 @@ export default function AtlasExplorer() {
             >
               <span>
                 <Landmark size={15} />
-                景点（可选）
+                为你推荐 · RECOMMENDED SPOTS
                 <small>
                   {selectedLandmarks.length
                     ? `已选 ${selectedLandmarks.length} 个`
-                    : "可以稍后补充"}
+                    : landmarkOptions.length
+                      ? `${landmarkOptions.length} 个灵感`
+                      : "也可以自己搜索"}
                 </small>
               </span>
               <ChevronDown
@@ -1274,7 +1390,7 @@ export default function AtlasExplorer() {
                     })}
                   </div>
                 ) : (
-                  <p>还没有推荐地点，可以搜索这座城市里的建筑或景点。</p>
+                  <p>推荐清单还在路上，先搜索这座城市里的建筑或景点吧。</p>
                 )}
 
                 <form
@@ -1308,10 +1424,12 @@ export default function AtlasExplorer() {
             <button
               type="button"
               className="primary"
-              onClick={addCandidateVisit}
+              onClick={saveCandidateVisit}
             >
               <Check size={16} />
-              保存到访
+              {editingVisitId
+                ? "保存修改 · SAVE CHANGES"
+                : "收下这次晃悠 · SAVE THIS ROAM"}
             </button>
           </footer>
         </section>

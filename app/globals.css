@@ -1,16 +1,18 @@
 @import "tailwindcss";
 
 :root {
-  --paper: #f4f0e6;
-  --paper-deep: #e7dfcf;
-  --paper-light: #fffdf8;
-  --ink: #14231f;
-  --ink-soft: #64716c;
-  --navy: #173f43;
-  --ocean: #d7e5e2;
-  --stamp: #c95742;
-  --line: rgba(20, 35, 31, 0.14);
-  --shadow: 0 22px 60px rgba(26, 39, 34, 0.16);
+  --paper: #fff3d7;
+  --paper-deep: #ffd994;
+  --paper-light: #fffdf6;
+  --ink: #21143f;
+  --ink-soft: #6d6183;
+  --navy: #5f39dc;
+  --ocean: #8edee0;
+  --stamp: #ff4f78;
+  --lime: #d8ff56;
+  --orange: #ff9b42;
+  --line: rgba(33, 20, 63, 0.17);
+  --shadow: 0 22px 60px rgba(59, 30, 99, 0.2);
 }
 
 * {
@@ -46,7 +48,7 @@ button {
 button:focus-visible,
 input:focus-visible,
 [role="button"]:focus-visible {
-  outline: 3px solid rgba(201, 87, 66, 0.35);
+  outline: 3px solid rgba(255, 79, 120, 0.42);
   outline-offset: 2px;
 }
 

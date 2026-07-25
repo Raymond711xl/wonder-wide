@@ -47,26 +47,98 @@ export type ActiveCountry = {
 export const TRAVEL_TYPE_OPTIONS: Array<{
   value: TravelType;
   label: string;
+  english: string;
   description: string;
   score: 1 | 2 | 3 | 4 | 5 | 6;
 }> = [
-  { value: "路过", label: "路过", description: "短暂停留", score: 1 },
-  { value: "旅游", label: "旅游", description: "专程游览", score: 2 },
-  { value: "出差", label: "出差", description: "工作到访", score: 3 },
+  {
+    value: "路过",
+    label: "路过",
+    english: "PASSING BY",
+    description: "短暂停留",
+    score: 1,
+  },
+  {
+    value: "旅游",
+    label: "旅游",
+    english: "HOLIDAY",
+    description: "专程游览",
+    score: 2,
+  },
+  {
+    value: "出差",
+    label: "出差",
+    english: "BUSINESS",
+    description: "工作到访",
+    score: 3,
+  },
   {
     value: "短居 / 留学",
     label: "短居 / 留学",
+    english: "STUDY / SHORT STAY",
     description: "阶段生活",
     score: 4,
   },
   {
     value: "常住",
     label: "常住",
+    english: "LIVING HERE",
     description: "工作 / 生活",
     score: 5,
   },
-  { value: "出生地", label: "出生地", description: "人生起点", score: 6 },
+  {
+    value: "出生地",
+    label: "出生地",
+    english: "BORN HERE",
+    description: "人生起点",
+    score: 6,
+  },
 ];
+
+const COUNTRY_NAME_OVERRIDES: Record<string, string> = {
+  CN: "中国",
+  TW: "中国",
+  TH: "泰国",
+};
+
+function comparablePlaceName(value: string) {
+  return value
+    .trim()
+    .replace(/[·•・／/]/g, "")
+    .replace(/國/g, "国")
+    .replace(/\s+/g, "")
+    .toLowerCase();
+}
+
+export function normalizeCountryName(name: string, countryCode: string) {
+  const code = countryCode.trim().toUpperCase();
+  if (COUNTRY_NAME_OVERRIDES[code]) return COUNTRY_NAME_OVERRIDES[code];
+
+  const parts = name
+    .split(/[·•・／/]/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const uniqueParts = parts.filter(
+    (part, index) =>
+      parts.findIndex(
+        (candidate) =>
+          comparablePlaceName(candidate) === comparablePlaceName(part),
+      ) === index,
+  );
+  return uniqueParts.join(" · ") || name.trim() || code;
+}
+
+export function formatLocationSubtitle(
+  region: string | undefined,
+  country: string,
+) {
+  const cleanRegion = region?.trim();
+  if (!cleanRegion) return country;
+  if (comparablePlaceName(cleanRegion) === comparablePlaceName(country)) {
+    return country;
+  }
+  return `${cleanRegion} · ${country}`;
+}
 
 export function travelTypeScore(travelType: TravelType) {
   return (
@@ -161,6 +233,17 @@ export const FEATURED_CITIES: CityCandidate[] = [
     longitude: 103.8198,
     latitude: 1.3521,
     bbox: [103.6, 1.16, 104.05, 1.47],
+  },
+  {
+    id: "city-bangkok",
+    name: "曼谷",
+    country: "泰国",
+    countryCode: "TH",
+    region: "曼谷",
+    subtitle: "曼谷 · 泰国",
+    longitude: 100.5018,
+    latitude: 13.7563,
+    bbox: [100.327, 13.494, 100.938, 13.955],
   },
 ];
 
@@ -340,6 +423,36 @@ export const LANDMARKS_BY_CITY: Record<string, LandmarkOption[]> = {
       subtitle: "滨海湾",
       longitude: 103.8636,
       latitude: 1.2816,
+    },
+  ],
+  "TH:曼谷": [
+    {
+      id: "landmark-grand-palace",
+      name: "大皇宫",
+      subtitle: "拍那空区",
+      longitude: 100.4913,
+      latitude: 13.7500,
+    },
+    {
+      id: "landmark-wat-arun",
+      name: "郑王庙",
+      subtitle: "昭披耶河畔",
+      longitude: 100.4889,
+      latitude: 13.7437,
+    },
+    {
+      id: "landmark-wat-pho",
+      name: "卧佛寺",
+      subtitle: "拍那空区",
+      longitude: 100.4925,
+      latitude: 13.7465,
+    },
+    {
+      id: "landmark-chatuchak",
+      name: "乍都乍周末市场",
+      subtitle: "乍都乍区",
+      longitude: 100.5501,
+      latitude: 13.7999,
     },
   ],
 };

@@ -3,9 +3,9 @@ import { headers } from "next/headers";
 import "./globals.css";
 import "./static-atlas.css";
 
-const title = "远迹 · Footprint Atlas";
+const title = "晃悠 · Wander Wide";
 const description =
-  "在两级静态世界地图上记录国家与城市足迹，并为每次到访补充日期、出游性质和景点。";
+  "把晃过的国家、城市和景点留在一张好玩的地图上。Been there. Wandered that.";
 
 export async function generateMetadata(): Promise<Metadata> {
   const incomingHeaders = await headers();
@@ -15,7 +15,7 @@ export async function generateMetadata(): Promise<Metadata> {
     incomingHeaders.get("x-forwarded-proto") ??
     (host?.startsWith("localhost") ? "http" : "https");
   const origin = `${protocol}://${host ?? "localhost:3000"}`;
-  const socialImage = new URL("/og.png", origin).toString();
+  const socialImage = new URL("/og-wander-wide.png", origin).toString();
 
   return {
     title,
@@ -27,9 +27,9 @@ export async function generateMetadata(): Promise<Metadata> {
       images: [
         {
           url: socialImage,
-          width: 1733,
-          height: 909,
-          alt: "远迹，一张可以留下个人旅行足迹的世界地图",
+          width: 1672,
+          height: 941,
+          alt: "晃悠，一张记录个人旅行足迹的波普世界地图",
         },
       ],
     },
