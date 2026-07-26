@@ -415,6 +415,34 @@ export const LANDMARKS_BY_CITY: Record<string, LandmarkOption[]> = {
       longitude: 18.0686,
       latitude: 59.3275,
     },
+    {
+      id: "landmark-gamla-stan",
+      name: "斯德哥尔摩老城",
+      subtitle: "老城岛",
+      longitude: 18.0706,
+      latitude: 59.325,
+    },
+    {
+      id: "landmark-nobel-prize-museum",
+      name: "诺贝尔奖博物馆",
+      subtitle: "大广场",
+      longitude: 18.0708,
+      latitude: 59.3252,
+    },
+    {
+      id: "landmark-fotografiska",
+      name: "摄影博物馆",
+      subtitle: "南城",
+      longitude: 18.0847,
+      latitude: 59.318,
+    },
+    {
+      id: "landmark-moderna-museet",
+      name: "现代艺术博物馆",
+      subtitle: "船岛",
+      longitude: 18.084,
+      latitude: 59.3263,
+    },
   ],
   "US:纽约": [
     {

@@ -58,12 +58,13 @@ test("renders the Wander Wide experience", async () => {
 });
 
 test("keeps the two-level static atlas as a client boundary", async () => {
-  const [page, explorer, staticMap, atlasData, layout, packageJson] =
+  const [page, explorer, staticMap, atlasData, staticCss, layout, packageJson] =
     await Promise.all([
       readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
       readFile(new URL("../app/AtlasExplorer.tsx", import.meta.url), "utf8"),
       readFile(new URL("../app/StaticAtlasMap.tsx", import.meta.url), "utf8"),
       readFile(new URL("../app/atlas-data.ts", import.meta.url), "utf8"),
+      readFile(new URL("../app/static-atlas.css", import.meta.url), "utf8"),
       readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
       readFile(new URL("../package.json", import.meta.url), "utf8"),
     ]);
@@ -84,6 +85,13 @@ test("keeps the two-level static atlas as a client boundary", async () => {
   assert.match(explorer, /WORLD_COUNTRY_TOTAL/);
   assert.match(explorer, /atlas-v2-roaming-progress/);
   assert.match(explorer, /RECOMMENDED SPOTS/);
+  assert.match(explorer, /LANDMARK_RECOMMENDATION_LIMIT = 12/);
+  assert.match(explorer, /fetchRecommendedLandmarks/);
+  assert.match(explorer, /overpass-api\.de\/api\/interpreter/);
+  assert.match(explorer, /正在为你整理这座城市的推荐景点/);
+  assert.match(staticCss, /left: 646px;/);
+  assert.match(staticCss, /font-size: 18px;/);
+  assert.match(staticCss, /Country navigation and recommendation clarity/);
   assert.match(staticMap, /world-countries\.geojson/);
   assert.match(staticMap, /viewBox/);
   assert.match(staticMap, /projectCoordinate/);

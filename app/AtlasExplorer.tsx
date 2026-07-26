@@ -54,6 +54,7 @@ import {
 const STORAGE_KEY = "footprint-atlas-m1-city-visits";
 const EARLIEST_VISIT_YEAR = 1900;
 const WORLD_COUNTRY_TOTAL = 173;
+const LANDMARK_RECOMMENDATION_LIMIT = 12;
 const VALID_TRAVEL_TYPES = new Set<TravelType>(
   TRAVEL_TYPE_OPTIONS.map((option) => option.value),
 );
@@ -73,6 +74,18 @@ type NominatimResult = {
     coordinates?: unknown;
   };
   address?: Record<string, string>;
+};
+
+type OverpassElement = {
+  id: number;
+  type: "node" | "way" | "relation";
+  lat?: number;
+  lon?: number;
+  center?: {
+    lat: number;
+    lon: number;
+  };
+  tags?: Record<string, string>;
 };
 
 type CountryGroup = {
@@ -369,6 +382,100 @@ function normalizeLandmarkResult(result: NominatimResult): LandmarkOption {
   };
 }
 
+function landmarkCategory(tags: Record<string, string>) {
+  const category = tags.tourism ?? tags.historic ?? "";
+  const labels: Record<string, string> = {
+    attraction: "人气景点",
+    museum: "博物馆",
+    gallery: "美术馆",
+    viewpoint: "观景地",
+    zoo: "动物园",
+    theme_park: "主题乐园",
+    monument: "纪念地标",
+    memorial: "纪念地标",
+    castle: "历史建筑",
+    archaeological_site: "历史遗址",
+  };
+  return labels[category] ?? "城市地标";
+}
+
+function recommendationScore(
+  element: OverpassElement,
+  city: CityCandidate,
+) {
+  const tags = element.tags ?? {};
+  const longitude = element.lon ?? element.center?.lon ?? city.longitude;
+  const latitude = element.lat ?? element.center?.lat ?? city.latitude;
+  const distance =
+    (longitude - city.longitude) ** 2 + (latitude - city.latitude) ** 2;
+  return (
+    (tags.wikidata ? 8 : 0) +
+    (tags.wikipedia ? 6 : 0) +
+    (tags.tourism === "attraction" ? 3 : 0) +
+    (tags.tourism === "museum" ? 2 : 0) -
+    distance
+  );
+}
+
+async function fetchRecommendedLandmarks(city: CityCandidate) {
+  const [west, south, east, north] = city.bbox ?? [
+    city.longitude - 0.18,
+    city.latitude - 0.14,
+    city.longitude + 0.18,
+    city.latitude + 0.14,
+  ];
+  const bounds = `${south},${west},${north},${east}`;
+  const query = `[out:json][timeout:14];
+(
+  nwr["tourism"~"^(attraction|museum|gallery|viewpoint|zoo|theme_park)$"]["name"](${bounds});
+  nwr["historic"~"^(monument|memorial|castle|archaeological_site)$"]["name"](${bounds});
+);
+out center 80;`;
+  const params = new URLSearchParams({ data: query });
+  const response = await fetch(
+    `https://overpass-api.de/api/interpreter?${params.toString()}`,
+    { headers: { Accept: "application/json" } },
+  );
+  if (!response.ok) throw new Error("Landmark recommendations failed");
+
+  const payload = (await response.json()) as { elements?: OverpassElement[] };
+  const unique = new Map<string, LandmarkOption>();
+  [...(payload.elements ?? [])]
+    .sort(
+      (left, right) =>
+        recommendationScore(right, city) - recommendationScore(left, city),
+    )
+    .forEach((element) => {
+      const tags = element.tags ?? {};
+      const name =
+        tags["name:zh-Hans"] ?? tags["name:zh"] ?? tags.name ?? "";
+      const longitude = element.lon ?? element.center?.lon;
+      const latitude = element.lat ?? element.center?.lat;
+      if (
+        !name.trim() ||
+        !Number.isFinite(longitude) ||
+        !Number.isFinite(latitude)
+      ) {
+        return;
+      }
+      const key = normalizeCityName(name).replace(/\s+/g, "");
+      if (unique.has(key)) return;
+      const area =
+        tags["addr:district"] ??
+        tags["addr:suburb"] ??
+        tags["addr:quarter"];
+      unique.set(key, {
+        id: `landmark-osm-${element.type}-${element.id}`,
+        name: name.trim(),
+        subtitle: [landmarkCategory(tags), area].filter(Boolean).join(" · "),
+        longitude: longitude as number,
+        latitude: latitude as number,
+      });
+    });
+
+  return [...unique.values()].slice(0, LANDMARK_RECOMMENDATION_LIMIT);
+}
+
 function migrateVisits(value: unknown): CityVisit[] {
   if (!Array.isArray(value)) return [];
   const legacyTravelTypes: Record<string, TravelType> = {
@@ -427,6 +534,7 @@ function migrateVisits(value: unknown): CityVisit[] {
 
 export default function AtlasExplorer() {
   const mapRef = useRef<StaticAtlasMapHandle | null>(null);
+  const landmarkRecommendationRequest = useRef(0);
   const [visits, setVisits] = useState<CityVisit[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const [activeCountry, setActiveCountry] = useState<ActiveCountry | null>(null);
@@ -441,6 +549,8 @@ export default function AtlasExplorer() {
     useState<TravelType>("旅游");
   const [landmarksOpen, setLandmarksOpen] = useState(false);
   const [landmarkOptions, setLandmarkOptions] = useState<LandmarkOption[]>([]);
+  const [landmarkRecommendationsLoading, setLandmarkRecommendationsLoading] =
+    useState(false);
   const [selectedLandmarks, setSelectedLandmarks] = useState<LandmarkOption[]>(
     [],
   );
@@ -521,6 +631,8 @@ export default function AtlasExplorer() {
   const showToast = useCallback((message: string) => setToast(message), []);
 
   const selectCountry = useCallback((country: ActiveCountry) => {
+    landmarkRecommendationRequest.current += 1;
+    setLandmarkRecommendationsLoading(false);
     setActiveCountry({
       code: country.code,
       name: normalizeCountryName(country.name, country.code),
@@ -531,54 +643,93 @@ export default function AtlasExplorer() {
     setSearchError("");
   }, []);
 
-  const selectCityCandidate = useCallback((city: CityCandidate) => {
-    const country = normalizeCountryName(city.country, city.countryCode);
-    const normalizedCity = {
-      ...city,
-      country,
-      subtitle: formatLocationSubtitle(city.region, country),
-    };
-    setCandidate(normalizedCity);
-    setEditingVisitId(null);
-    setActiveCountry({ code: city.countryCode, name: country });
-    setVisitDate(todayISO());
-    setVisitTravelType("旅游");
-    setLandmarkOptions(landmarksForCity(normalizedCity));
-    setSelectedLandmarks([]);
-    setLandmarkQuery("");
-    setLandmarkError("");
-    setLandmarksOpen(true);
-    setSearchResults([]);
-    setSearchError("");
-  }, []);
+  const loadLandmarkRecommendations = useCallback(
+    async (city: CityCandidate, seeded: LandmarkOption[]) => {
+      const requestId = ++landmarkRecommendationRequest.current;
+      setLandmarkRecommendationsLoading(true);
+      try {
+        const discovered = await fetchRecommendedLandmarks(city);
+        if (requestId !== landmarkRecommendationRequest.current) return;
+        setLandmarkOptions((current) => {
+          const merged = new Map<string, LandmarkOption>();
+          [...current, ...seeded, ...discovered].forEach((landmark) => {
+            const key = normalizeCityName(landmark.name).replace(/\s+/g, "");
+            if (!merged.has(key)) merged.set(key, landmark);
+          });
+          return [...merged.values()].slice(
+            0,
+            LANDMARK_RECOMMENDATION_LIMIT,
+          );
+        });
+      } catch {
+        // Curated recommendations and manual search remain available offline.
+      } finally {
+        if (requestId === landmarkRecommendationRequest.current) {
+          setLandmarkRecommendationsLoading(false);
+        }
+      }
+    },
+    [],
+  );
 
-  const openVisitEditor = useCallback((visit: CityVisit) => {
-    const country = normalizeCountryName(visit.country, visit.countryCode);
-    const normalizedVisit = {
-      ...visit,
-      country,
-      subtitle: formatLocationSubtitle(visit.region, country),
-    };
-    const recommendations = landmarksForCity(normalizedVisit);
-    const mergedLandmarks = new Map(
-      [...recommendations, ...visit.landmarks].map((landmark) => [
-        landmark.id,
-        landmark,
-      ]),
-    );
-    setCandidate(normalizedVisit);
-    setEditingVisitId(visit.visitId);
-    setActiveCountry({ code: visit.countryCode, name: country });
-    setVisitDate(visit.visitedOn);
-    setVisitTravelType(visit.travelType);
-    setLandmarkOptions([...mergedLandmarks.values()]);
-    setSelectedLandmarks(visit.landmarks);
-    setLandmarkQuery("");
-    setLandmarkError("");
-    setLandmarksOpen(true);
-    setSearchResults([]);
-    setSearchError("");
-  }, []);
+  const selectCityCandidate = useCallback(
+    (city: CityCandidate) => {
+      const country = normalizeCountryName(city.country, city.countryCode);
+      const normalizedCity = {
+        ...city,
+        country,
+        subtitle: formatLocationSubtitle(city.region, country),
+      };
+      const seeded = landmarksForCity(normalizedCity);
+      setCandidate(normalizedCity);
+      setEditingVisitId(null);
+      setActiveCountry({ code: city.countryCode, name: country });
+      setVisitDate(todayISO());
+      setVisitTravelType("旅游");
+      setLandmarkOptions(seeded);
+      setSelectedLandmarks([]);
+      setLandmarkQuery("");
+      setLandmarkError("");
+      setLandmarksOpen(true);
+      setSearchResults([]);
+      setSearchError("");
+      void loadLandmarkRecommendations(normalizedCity, seeded);
+    },
+    [loadLandmarkRecommendations],
+  );
+
+  const openVisitEditor = useCallback(
+    (visit: CityVisit) => {
+      const country = normalizeCountryName(visit.country, visit.countryCode);
+      const normalizedVisit = {
+        ...visit,
+        country,
+        subtitle: formatLocationSubtitle(visit.region, country),
+      };
+      const recommendations = landmarksForCity(normalizedVisit);
+      const mergedLandmarks = new Map(
+        [...recommendations, ...visit.landmarks].map((landmark) => [
+          landmark.id,
+          landmark,
+        ]),
+      );
+      const seeded = [...mergedLandmarks.values()];
+      setCandidate(normalizedVisit);
+      setEditingVisitId(visit.visitId);
+      setActiveCountry({ code: visit.countryCode, name: country });
+      setVisitDate(visit.visitedOn);
+      setVisitTravelType(visit.travelType);
+      setLandmarkOptions(seeded);
+      setSelectedLandmarks(visit.landmarks);
+      setLandmarkQuery("");
+      setLandmarkError("");
+      setLandmarksOpen(true);
+      setSearchResults([]);
+      setSearchError("");
+      void loadLandmarkRecommendations(normalizedVisit, seeded);
+    },
+    [loadLandmarkRecommendations],
+  );
 
   const openCity = useCallback(
     (city: CityCandidate) => {
@@ -755,6 +906,8 @@ export default function AtlasExplorer() {
   }
 
   function closeComposer() {
+    landmarkRecommendationRequest.current += 1;
+    setLandmarkRecommendationsLoading(false);
     setCandidate(null);
     setEditingVisitId(null);
     setSelectedLandmarks([]);
@@ -1391,10 +1544,12 @@ export default function AtlasExplorer() {
                 <Landmark size={15} />
                 为你推荐 · RECOMMENDED SPOTS
                 <small>
-                  {selectedLandmarks.length
+                  {landmarkRecommendationsLoading
+                    ? `正在搜罗${candidate.name}的好去处…`
+                    : selectedLandmarks.length
                     ? `已选 ${selectedLandmarks.length} 个`
                     : landmarkOptions.length
-                      ? `${landmarkOptions.length} 个灵感`
+                      ? `${landmarkOptions.length} 个推荐，可多选`
                       : "也可以自己搜索"}
                 </small>
               </span>
@@ -1406,6 +1561,9 @@ export default function AtlasExplorer() {
 
             {landmarksOpen ? (
               <div className="atlas-v2-landmark-body">
+                <p className="atlas-v2-landmark-helper">
+                  点「＋」加入足迹；没有想要的，可以在下方直接搜索。
+                </p>
                 {landmarkOptions.length > 0 ? (
                   <div className="atlas-v2-landmark-options">
                     {landmarkOptions.map((landmark) => {
@@ -1429,8 +1587,13 @@ export default function AtlasExplorer() {
                       );
                     })}
                   </div>
+                ) : landmarkRecommendationsLoading ? (
+                  <p className="atlas-v2-landmark-loading">
+                    <LoaderCircle className="spinning" size={13} />
+                    正在为你整理这座城市的推荐景点…
+                  </p>
                 ) : (
-                  <p>推荐清单还在路上，先搜索这座城市里的建筑或景点吧。</p>
+                  <p>暂时没捞到推荐，试试搜索建筑、博物馆或公园。</p>
                 )}
 
                 <form
@@ -1456,6 +1619,9 @@ export default function AtlasExplorer() {
                   </button>
                 </form>
                 {landmarkError ? <p>{landmarkError}</p> : null}
+                <small className="atlas-v2-landmark-source">
+                  自动推荐与搜索 © OpenStreetMap contributors
+                </small>
               </div>
             ) : null}
           </div>

@@ -2366,3 +2366,67 @@
     width: 196px;
   }
 }
+
+/* Country navigation and recommendation clarity */
+@media (min-width: 881px) {
+  .atlas-v2-world-back {
+    width: 220px;
+    min-width: 0;
+  }
+
+  .atlas-v2-world-back > span:last-child {
+    min-width: 0;
+  }
+
+  .atlas-v2-world-back strong,
+  .atlas-v2-world-back small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .atlas-v2-breadcrumb.has-country {
+    left: 646px;
+  }
+}
+
+.atlas-v2-roaming-badge strong {
+  font-size: 18px;
+  line-height: 1.05;
+}
+
+.atlas-v2-roaming-badge em {
+  font-size: 6.5px;
+}
+
+.atlas-v2-landmark-helper {
+  margin: 0 0 8px !important;
+  color: var(--ink) !important;
+  font-size: 7px !important;
+  font-weight: 700;
+}
+
+.atlas-v2-landmark-loading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 35px;
+  padding: 8px 9px;
+  border: 1px dashed rgba(33, 20, 63, 0.28);
+  border-radius: 8px;
+  background: rgba(216, 255, 86, 0.16);
+}
+
+.atlas-v2-landmark-source {
+  display: block;
+  margin-top: 7px;
+  color: var(--ink-soft);
+  font-size: 5.5px;
+  line-height: 1.3;
+}
+
+@media (max-width: 880px) {
+  .atlas-v2-roaming-badge strong {
+    font-size: 17px;
+  }
+}
