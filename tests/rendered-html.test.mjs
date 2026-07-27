@@ -39,16 +39,18 @@ test("renders the Wander Wide experience", async () => {
   assert.match(html, /这地球/);
   assert.match(html, /咱晃过/);
   assert.match(html, /这地球，咱晃过。/);
-  assert.match(html, /国家 · COUNTRIES/);
+  assert.match(html, />国家</);
   assert.match(html, /搜索城市/);
   assert.match(html, /WANDER WIDE/);
   assert.match(html, /待出门/);
   assert.match(html, /征服全球/);
-  assert.match(html, /WORLD COVERAGE/);
   assert.match(html, /atlas-v2-roaming-progress/);
   assert.doesNotMatch(html, /data-testid="map-coverage"/);
-  assert.match(html, /三分熟/);
-  assert.match(html, /WELL-DONE/);
+  assert.match(html, /atlas-v2-heat-scale/);
+  assert.doesNotMatch(
+    html,
+    /WORLD COVERAGE|COUNTRIES|CITIES|MY ROAMS|DONENESS|WELL-DONE/,
+  );
   assert.match(html, /https:\/\/atlas\.example\/og-wander-wide\.png/);
   assert.doesNotMatch(
     html,
@@ -84,14 +86,17 @@ test("keeps the two-level static atlas as a client boundary", async () => {
   assert.match(explorer, /roamingBadgeFor/);
   assert.match(explorer, /WORLD_COUNTRY_TOTAL/);
   assert.match(explorer, /atlas-v2-roaming-progress/);
-  assert.match(explorer, /RECOMMENDED SPOTS/);
+  assert.match(explorer, /为你推荐/);
   assert.match(explorer, /LANDMARK_RECOMMENDATION_LIMIT = 12/);
   assert.match(explorer, /fetchRecommendedLandmarks/);
   assert.match(explorer, /overpass-api\.de\/api\/interpreter/);
   assert.match(explorer, /正在为你整理这座城市的推荐景点/);
-  assert.match(staticCss, /left: 646px;/);
-  assert.match(staticCss, /font-size: 18px;/);
-  assert.match(staticCss, /Country navigation and recommendation clarity/);
+  assert.match(staticCss, /--atlas-type-title: 22px/);
+  assert.match(staticCss, /--atlas-type-note: 12px/);
+  assert.match(staticCss, /--atlas-type-aux: 9px/);
+  assert.match(staticCss, /static-country-badge:hover \.badge-name/);
+  assert.match(staticCss, /static-city-marker:hover \.city-label-card/);
+  assert.match(staticCss, /atlas-v2-heat-scale/);
   assert.match(staticMap, /world-countries\.geojson/);
   assert.match(staticMap, /viewBox/);
   assert.match(staticMap, /projectCoordinate/);
@@ -102,11 +107,20 @@ test("keeps the two-level static atlas as a client boundary", async () => {
   assert.match(staticMap, /formatCoverage/);
   assert.match(staticMap, /CHINA_PROVINCE_TOTAL/);
   assert.match(staticMap, /chinaProvinceKey/);
-  assert.match(staticMap, /PROVINCE COVERAGE/);
+  assert.match(staticMap, /省级覆盖/);
+  assert.match(staticMap, /MIN_VIEWBOX_WIDTH = 42/);
+  assert.match(staticMap, /zoomViewBoxAt/);
+  assert.match(staticMap, /panViewBox/);
+  assert.match(staticMap, /onDoubleClick=\{handleMapDoubleClick\}/);
+  assert.match(staticMap, /onPointerDown=\{handleMapPointerDown\}/);
+  assert.match(staticMap, /onWheel=\{handleMapWheel\}/);
+  assert.match(staticMap, /pointerDragRef/);
   assert.match(staticMap, /Math\.max\(\s*76/);
   assert.match(staticMap, /GeoNames/i);
   assert.match(staticMap, /geoBoundaries/i);
   assert.match(staticMap, /onCityEdit/);
+  assert.doesNotMatch(staticMap, /static-map-mode-note/);
+  assert.doesNotMatch(explorer, /BACK TO WORLD|WORLD COVERAGE|MAKE MY MAP/);
   assert.match(atlasData, /TRAVEL_TYPE_OPTIONS/);
   assert.match(atlasData, /"路过"/);
   assert.match(atlasData, /"旅游"/);
@@ -114,7 +128,7 @@ test("keeps the two-level static atlas as a client boundary", async () => {
   assert.match(atlasData, /"短居 \/ 留学"/);
   assert.match(atlasData, /"常住"/);
   assert.match(atlasData, /"出生地"/);
-  assert.match(atlasData, /"PASSING BY"/);
+  assert.doesNotMatch(atlasData, /PASSING BY|HOLIDAY|LIVING HERE/);
   assert.match(atlasData, /"TH:曼谷"/);
   assert.match(atlasData, /normalizeCountryName/);
   assert.doesNotMatch(

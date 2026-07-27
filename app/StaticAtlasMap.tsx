@@ -5,9 +5,15 @@ import {
   useEffect,
   useImperativeHandle,
   useMemo,
+  useRef,
   useState,
 } from "react";
-import type { KeyboardEvent } from "react";
+import type {
+  KeyboardEvent,
+  MouseEvent,
+  PointerEvent,
+  WheelEvent,
+} from "react";
 import type {
   ActiveCountry,
   AtlasGeometry,
@@ -26,6 +32,7 @@ const MAP_HEIGHT = 760;
 const MAP_ASPECT = MAP_WIDTH / MAP_HEIGHT;
 const MIN_LATITUDE = -58;
 const MAX_LATITUDE = 84;
+const MIN_VIEWBOX_WIDTH = 42;
 
 type ViewBox = {
   x: number;
@@ -94,6 +101,13 @@ type SubdivisionCollection = {
 type ProjectedSubdivision = {
   id: string;
   path: string;
+};
+
+type PointerDrag = {
+  pointerId: number;
+  startClientX: number;
+  startClientY: number;
+  startViewBox: ViewBox;
 };
 
 type CityCatalog = {
@@ -281,7 +295,7 @@ function fitBounds(
 }
 
 function zoomViewBox(current: ViewBox, factor: number): ViewBox {
-  const width = clamp(current.width * factor, 115, MAP_WIDTH);
+  const width = clamp(current.width * factor, MIN_VIEWBOX_WIDTH, MAP_WIDTH);
   const height = width / MAP_ASPECT;
   const centerX = current.x + current.width / 2;
   const centerY = current.y + current.height / 2;
@@ -290,6 +304,32 @@ function zoomViewBox(current: ViewBox, factor: number): ViewBox {
     y: clamp(centerY - height / 2, 0, MAP_HEIGHT - height),
     width,
     height,
+  };
+}
+
+function zoomViewBoxAt(
+  current: ViewBox,
+  factor: number,
+  anchor: { x: number; y: number },
+): ViewBox {
+  const width = clamp(current.width * factor, MIN_VIEWBOX_WIDTH, MAP_WIDTH);
+  const height = width / MAP_ASPECT;
+  const anchorRatioX = clamp((anchor.x - current.x) / current.width, 0, 1);
+  const anchorRatioY = clamp((anchor.y - current.y) / current.height, 0, 1);
+
+  return {
+    x: clamp(anchor.x - anchorRatioX * width, 0, MAP_WIDTH - width),
+    y: clamp(anchor.y - anchorRatioY * height, 0, MAP_HEIGHT - height),
+    width,
+    height,
+  };
+}
+
+function panViewBox(current: ViewBox, deltaX: number, deltaY: number) {
+  return {
+    ...current,
+    x: clamp(current.x + deltaX, 0, MAP_WIDTH - current.width),
+    y: clamp(current.y + deltaY, 0, MAP_HEIGHT - current.height),
   };
 }
 
@@ -369,9 +409,11 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
     const [subdivisions, setSubdivisions] = useState<ProjectedSubdivision[]>(
       [],
     );
-    const [subdivisionLabel, setSubdivisionLabel] = useState("");
     const [viewBox, setViewBox] = useState<ViewBox>(WORLD_VIEW);
     const [loadError, setLoadError] = useState(false);
+    const [isDragging, setIsDragging] = useState(false);
+    const svgRef = useRef<SVGSVGElement | null>(null);
+    const pointerDragRef = useRef<PointerDrag | null>(null);
 
     const countryByCode = useMemo(
       () => new Map(countries.map((country) => [country.code, country])),
@@ -473,14 +515,12 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
         !SUBDIVISION_COUNTRIES.has(activeCountry.code)
       ) {
         setSubdivisions([]);
-        setSubdivisionLabel("");
         return () => {
           cancelled = true;
         };
       }
 
       setSubdivisions([]);
-      setSubdivisionLabel("");
       fetch(`/data/country-subdivisions/${activeCountry.code}.geojson`)
         .then((response) => {
           if (!response.ok) throw new Error("Subdivision map unavailable");
@@ -494,12 +534,10 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
               path: geometryPath(feature.geometry),
             })),
           );
-          setSubdivisionLabel(collection.boundaryLabel ?? "行政区");
         })
         .catch(() => {
           if (cancelled) return;
           setSubdivisions([]);
-          setSubdivisionLabel("");
         });
 
       return () => {
@@ -521,7 +559,10 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
       ref,
       () => ({
         reset() {
-          setViewBox(WORLD_VIEW);
+          const country = activeCountry
+            ? countryByCode.get(activeCountry.code)
+            : null;
+          setViewBox(country ? fitBounds(country.bounds) : WORLD_VIEW);
         },
         zoomIn() {
           setViewBox((current) => zoomViewBox(current, 0.72));
@@ -534,7 +575,7 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
           if (country) setViewBox(fitBounds(country.bounds));
         },
       }),
-      [countryByCode],
+      [activeCountry, countryByCode],
     );
 
     const cityAggregates = useMemo(
@@ -588,23 +629,24 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
     );
 
     const worldBadges = useMemo(() => {
-      const occupied: Array<{ x: number; y: number; width: number }> = [];
+      const occupied: Array<{ x: number; y: number }> = [];
       return countryMetrics
         .map((metric) => {
           const country = countryByCode.get(metric.code);
           if (!country) return null;
           const badgeWidth = Math.max(78, metric.name.length * 12 + 34);
-          const width = badgeWidth + 17;
-          const offsets = [0, -38, 38, -76, 76];
+          const offsets = [0, -24, 24, -48, 48, -72, 72];
           const offset = offsets.find((candidateOffset) =>
             occupied.every(
               (placed) =>
-                Math.abs(placed.x - country.labelX) > (placed.width + width) / 2 ||
-                Math.abs(placed.y - (country.labelY + candidateOffset)) > 30,
+                Math.hypot(
+                  placed.x - country.labelX,
+                  placed.y - (country.labelY + candidateOffset),
+                ) > 24,
             ),
           );
-          const y = country.labelY + (offset ?? 92);
-          occupied.push({ x: country.labelX, y, width });
+          const y = country.labelY + (offset ?? 88);
+          occupied.push({ x: country.labelX, y });
           return {
             metric,
             country,
@@ -630,16 +672,151 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
     // anchor itself stays in the map's SVG coordinate system at every zoom.
     const markerScale = clamp(viewBox.width / MAP_WIDTH, 0.085, 1);
 
+    function clientToMapPoint(
+      clientX: number,
+      clientY: number,
+      current: ViewBox,
+    ) {
+      const svg = svgRef.current;
+      if (!svg) {
+        return {
+          x: current.x + current.width / 2,
+          y: current.y + current.height / 2,
+        };
+      }
+      const rect = svg.getBoundingClientRect();
+      const scale = Math.min(
+        rect.width / current.width,
+        rect.height / current.height,
+      );
+      if (!Number.isFinite(scale) || scale <= 0) {
+        return {
+          x: current.x + current.width / 2,
+          y: current.y + current.height / 2,
+        };
+      }
+      const renderedWidth = current.width * scale;
+      const renderedHeight = current.height * scale;
+      const offsetX = (rect.width - renderedWidth) / 2;
+      const offsetY = (rect.height - renderedHeight) / 2;
+      return {
+        x: clamp(
+          current.x + (clientX - rect.left - offsetX) / scale,
+          current.x,
+          current.x + current.width,
+        ),
+        y: clamp(
+          current.y + (clientY - rect.top - offsetY) / scale,
+          current.y,
+          current.y + current.height,
+        ),
+      };
+    }
+
+    function handleMapDoubleClick(event: MouseEvent<SVGSVGElement>) {
+      const target = event.target as Element;
+      if (target.closest('[role="button"]')) return;
+      event.preventDefault();
+      setViewBox((current) =>
+        zoomViewBoxAt(
+          current,
+          0.58,
+          clientToMapPoint(event.clientX, event.clientY, current),
+        ),
+      );
+    }
+
+    function handleMapPointerDown(event: PointerEvent<SVGSVGElement>) {
+      if (event.button !== 0) return;
+      const target = event.target as Element;
+      if (target.closest('[role="button"]')) return;
+      pointerDragRef.current = {
+        pointerId: event.pointerId,
+        startClientX: event.clientX,
+        startClientY: event.clientY,
+        startViewBox: viewBox,
+      };
+      event.currentTarget.setPointerCapture(event.pointerId);
+      setIsDragging(true);
+    }
+
+    function handleMapPointerMove(event: PointerEvent<SVGSVGElement>) {
+      const drag = pointerDragRef.current;
+      if (!drag || drag.pointerId !== event.pointerId) return;
+      const rect = event.currentTarget.getBoundingClientRect();
+      const scale = Math.min(
+        rect.width / drag.startViewBox.width,
+        rect.height / drag.startViewBox.height,
+      );
+      if (!Number.isFinite(scale) || scale <= 0) return;
+      const deltaX = (drag.startClientX - event.clientX) / scale;
+      const deltaY = (drag.startClientY - event.clientY) / scale;
+      setViewBox(
+        panViewBox(drag.startViewBox, deltaX, deltaY),
+      );
+    }
+
+    function finishMapDrag(event: PointerEvent<SVGSVGElement>) {
+      const drag = pointerDragRef.current;
+      if (!drag || drag.pointerId !== event.pointerId) return;
+      pointerDragRef.current = null;
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+      setIsDragging(false);
+    }
+
+    function handleMapWheel(event: WheelEvent<SVGSVGElement>) {
+      event.preventDefault();
+      if (event.ctrlKey) {
+        const zoomFactor = clamp(Math.exp(event.deltaY * 0.006), 0.72, 1.38);
+        setViewBox((current) =>
+          zoomViewBoxAt(
+            current,
+            zoomFactor,
+            clientToMapPoint(event.clientX, event.clientY, current),
+          ),
+        );
+        return;
+      }
+
+      setViewBox((current) => {
+        const svg = svgRef.current;
+        if (!svg) return current;
+        const rect = svg.getBoundingClientRect();
+        const scale = Math.min(
+          rect.width / current.width,
+          rect.height / current.height,
+        );
+        if (!Number.isFinite(scale) || scale <= 0) return current;
+        const deltaMultiplier =
+          event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? rect.height : 1;
+        return panViewBox(
+          current,
+          (event.deltaX * deltaMultiplier) / scale,
+          (event.deltaY * deltaMultiplier) / scale,
+        );
+      });
+    }
+
     return (
       <div
-        className="static-atlas-map"
+        className={`static-atlas-map ${isDragging ? "is-dragging" : ""}`}
         role="region"
         aria-label="晃悠双视图旅行地图"
         data-map-mode={activeCountry ? "country" : "world"}
+        data-can-pan={viewBox.width < MAP_WIDTH ? "true" : "false"}
       >
         <svg
+          ref={svgRef}
           viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`}
           preserveAspectRatio="xMidYMid meet"
+          onDoubleClick={handleMapDoubleClick}
+          onPointerDown={handleMapPointerDown}
+          onPointerMove={handleMapPointerMove}
+          onPointerUp={finishMapDrag}
+          onPointerCancel={finishMapDrag}
+          onWheel={handleMapWheel}
           aria-label={
             activeCountry
               ? `${activeCountry.name}${activeCountry.code === "CN" ? "省级" : "城市"}地图`
@@ -773,7 +950,7 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
                         x2={(country.labelX - x) / markerScale}
                         y2={(country.labelY - y) / markerScale}
                       />
-                      <circle r="13" />
+                      <circle r="9" />
                       <text className="badge-count" textAnchor="middle" y="4">
                         {metric.cityCount}
                       </text>
@@ -819,8 +996,8 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
                       keyboardActivate(event, () => onCityEdit(aggregate.city))
                     }
                   >
-                    <circle className="city-halo" r="16" />
-                    <circle className="city-sequence" r="11" />
+                    <circle className="city-halo" r="13" />
+                    <circle className="city-sequence" r="9" />
                     <text className="city-number" textAnchor="middle" y="4">
                       {aggregate.sequence}
                     </text>
@@ -857,7 +1034,7 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
                     onClick={activate}
                     onKeyDown={(event) => keyboardActivate(event, activate)}
                   >
-                    <circle className="city-suggestion-dot" r="6" />
+                    <circle className="city-suggestion-dot" r="4.5" />
                     <line x1="8" y1="0" x2="16" y2="0" />
                     <rect
                       className="city-suggestion-card"
@@ -896,78 +1073,31 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
               isChinaProvinceScope ? "province" : "country"
             }
             aria-label={`${activeCountry.name}${isChinaProvinceScope ? "省级区域" : "城市"}覆盖率`}
+            data-attribution={
+              isChinaProvinceScope ? "geoBoundaries" : "GeoNames"
+            }
           >
             <header>
               <span>
                 {activeCountry.name} ·{" "}
-                {isChinaProvinceScope
-                  ? "PROVINCE COVERAGE"
-                  : "CITY COVERAGE"}
+                {isChinaProvinceScope ? "省级覆盖" : "城市覆盖"}
               </span>
               <strong>{coverageLabel}</strong>
             </header>
 
             <div className="static-atlas-coverage-metrics">
-              {isChinaProvinceScope ? (
-                <>
-                  <span>
-                    <b>
-                      {visitedChinaProvinces} /{" "}
-                      {activeCoverageTotal.toLocaleString("zh-CN")}
-                    </b>
-                    省级区域 · PROVINCES
-                  </span>
-                  <span>
-                    <b>{cityAggregates.length.toLocaleString("zh-CN")}</b>
-                    已去城市 · CITIES
-                  </span>
-                </>
-              ) : (
-                <>
-                  <span>
-                    <b>
-                      {cityAggregates.length.toLocaleString("zh-CN")} /{" "}
-                      {activeCatalogCities
-                        ? activeCatalogCities.toLocaleString("zh-CN")
-                        : "—"}
-                    </b>
-                    收录城市 · CITIES
-                  </span>
-                  {subdivisions.length > 0 ? (
-                    <span>
-                      <b>{subdivisions.length.toLocaleString("zh-CN")}</b>
-                      {subdivisionLabel}边界
-                    </span>
-                  ) : null}
-                </>
-              )}
+              <span>
+                <b>
+                  {activeCoverageVisited.toLocaleString("zh-CN")} /{" "}
+                  {activeCoverageTotal
+                    ? activeCoverageTotal.toLocaleString("zh-CN")
+                    : "—"}
+                </b>
+                {isChinaProvinceScope ? "到访省级区域" : "到访城市"}
+              </span>
             </div>
-
-            <small>
-              {isChinaProvinceScope
-                ? "省级口径：34 个省级行政区 · GEOBOUNDARIES"
-                : "城市口径：人口 > 15,000 或行政首府 · GEONAMES"}
-              {!isChinaProvinceScope && subdivisions.length > 0
-                ? " · BOUNDARIES: GEOBOUNDARIES"
-                : ""}
-            </small>
           </section>
         ) : null}
-
-        <div className="static-map-mode-note">
-          <strong>
-            {activeCountry
-              ? `${activeCountry.name} · ${isChinaProvinceScope ? "PROVINCES" : "CITIES"}`
-              : "全球 · THE WORLD"}
-          </strong>
-          <span>
-            {activeCountry
-              ? isChinaProvinceScope
-                ? "按省浏览，城市节点仍可修改 · TAP A CITY TO EDIT"
-                : "点击去过的城市即可修改 · TAP A CITY TO EDIT"
-              : "颜色越深，这块地越熟 · DEEPER MEANS MORE"}
-          </span>
-        </div>
 
         {countries.length === 0 && !loadError ? (
           <div className="static-map-loading" role="status">

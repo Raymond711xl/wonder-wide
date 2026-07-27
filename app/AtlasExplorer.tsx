@@ -96,7 +96,6 @@ type CountryGroup = {
 type RoamingBadge = {
   key: "starter" | "china" | "abroad-once" | "abroad-often" | "global-local";
   title: string;
-  english: string;
   description: string;
 };
 
@@ -104,31 +103,26 @@ const ROAMING_BADGES: Record<RoamingBadge["key"], RoamingBadge> = {
   starter: {
     key: "starter",
     title: "待出门",
-    english: "READY TO ROAM",
     description: "第一枚城市图钉正在等你",
   },
   china: {
     key: "china",
     title: "神州晃客",
-    english: "CHINA ROAMER",
     description: "先把家门口晃明白",
   },
   "abroad-once": {
     key: "abroad-once",
     title: "出境试水员",
-    english: "BORDER TESTER",
     description: "地球副本已经解锁",
   },
   "abroad-often": {
     key: "abroad-often",
     title: "地球串门王",
-    english: "WORLD HOPPER",
     description: "护照已经很有故事",
   },
   "global-local": {
     key: "global-local",
     title: "异乡生活家",
-    english: "GLOBAL LOCAL",
     description: "不只路过，也认真生活过",
   },
 };
@@ -1005,8 +999,8 @@ export default function AtlasExplorer() {
             <ArrowLeft size={19} />
           </span>
           <span>
-            <strong>返回全球 · BACK TO WORLD</strong>
-            <small>离开 {activeCountry.name} · LEAVE COUNTRY</small>
+            <strong>返回全球</strong>
+            <small>离开 {activeCountry.name}</small>
           </span>
         </button>
       ) : null}
@@ -1034,9 +1028,9 @@ export default function AtlasExplorer() {
           <p>
             {activeCountry
               ? isChinaActive
-                ? "省级区域 · PROVINCES"
-                : "城市 · CITIES"
-              : "国家 · COUNTRIES"}
+                ? "省级区域"
+                : "城市"
+              : "国家"}
             <small>
               {activeCountry
                 ? isChinaActive
@@ -1110,7 +1104,7 @@ export default function AtlasExplorer() {
             ) : (
               <>
                 <header>
-                  <span>城市结果 · CITY RESULTS</span>
+                  <span>城市结果</span>
                   <small>选一座，继续补全记录</small>
                 </header>
                 {searchResults.map((city) => (
@@ -1136,27 +1130,12 @@ export default function AtlasExplorer() {
         )}
       </section>
 
-      <nav
-        className={`atlas-v2-breadcrumb ${activeCountry ? "has-country" : ""}`}
-        aria-label="地图位置"
-      >
-        <strong>{activeCountry?.name ?? "全球 · WORLD"}</strong>
-        {candidate ? (
-          <>
-            <ChevronRight size={13} />
-            <strong>{candidate.name}</strong>
-          </>
-        ) : null}
-        <span>
-          {candidate
-            ? "补充日期、出游性质与景点"
-            : activeCountry
-              ? isChinaActive
-                ? "省级地图 · PROVINCE MAP"
-                : "城市地图 · CITY MAP"
-              : "国家地图 · COUNTRY MAP"}
-        </span>
-      </nav>
+      {!activeCountry ? (
+        <nav className="atlas-v2-breadcrumb" aria-label="地图位置">
+          <strong>全球</strong>
+          <span>国家地图</span>
+        </nav>
+      ) : null}
 
       <aside
         className={`atlas-v2-panel ${mobilePanelOpen ? "is-open" : ""}`}
@@ -1168,7 +1147,7 @@ export default function AtlasExplorer() {
             WANDER WIDE · 在地球上瞎晃的正经记录
           </span>
           <h1>这地球，咱晃过。</h1>
-          <p>点国家、搜城市、记到访。 · BEEN THERE. WANDERED THAT.</p>
+          <p>点国家、搜城市、记到访。</p>
         </div>
 
         <section
@@ -1179,9 +1158,8 @@ export default function AtlasExplorer() {
             <Award size={18} />
           </span>
           <span>
-            <small>你的晃悠称号 · YOUR ROAMING TITLE</small>
+            <small>你的晃悠称号</small>
             <strong>{roamingBadge.title}</strong>
-            <em>{roamingBadge.english}</em>
           </span>
           <p>{roamingBadge.description}</p>
           <div
@@ -1189,7 +1167,7 @@ export default function AtlasExplorer() {
             aria-label={`征服全球 ${formatCoveragePercent(stats.countries, WORLD_COUNTRY_TOTAL)}`}
           >
             <span>
-              <small>征服全球 · WORLD COVERAGE</small>
+              <small>征服全球</small>
               <b>
                 {stats.countries} / {WORLD_COUNTRY_TOTAL} 国家 · {stats.cities}{" "}
                 城市
@@ -1204,19 +1182,19 @@ export default function AtlasExplorer() {
         <div className="atlas-v2-stats" aria-label="足迹统计">
           <div>
             <strong>{String(stats.countries).padStart(2, "0")}</strong>
-            <span>国家 <small>COUNTRIES</small></span>
+            <span>国家</span>
           </div>
           <div>
             <strong>{String(stats.cities).padStart(2, "0")}</strong>
-            <span>城市 <small>CITIES</small></span>
+            <span>城市</span>
           </div>
           <div>
             <strong>{String(stats.landmarks).padStart(2, "0")}</strong>
-            <span>景点 <small>SPOTS</small></span>
+            <span>景点</span>
           </div>
           <div>
             <strong>{String(stats.visits).padStart(2, "0")}</strong>
-            <span>到访 <small>TRIPS</small></span>
+            <span>到访</span>
           </div>
         </div>
 
@@ -1229,7 +1207,7 @@ export default function AtlasExplorer() {
               <Globe2 size={18} />
             </div>
             <div>
-              <small>正在晃悠 · NOW ROAMING</small>
+              <small>正在晃悠</small>
               <strong>{activeCountry.name}</strong>
               <span>
                 {activeMetric
@@ -1245,8 +1223,8 @@ export default function AtlasExplorer() {
         <section className="atlas-v2-panel-section">
           <div className="atlas-v2-section-title">
             <div>
-              <span>我的晃悠档案 · MY ROAMS</span>
-              <small>{visits.length} 次到访记录 · TRIPS</small>
+              <span>我的晃悠档案</span>
+              <small>{visits.length} 次到访记录</small>
             </div>
             {visits.length > 0 ? (
               <button type="button" onClick={showAllFootprints}>
@@ -1350,7 +1328,7 @@ export default function AtlasExplorer() {
                           </span>
                           <span className="atlas-v2-edit-cue">
                             <Pencil size={11} />
-                            修改 · EDIT
+                            修改
                           </span>
                         </div>
                       </li>
@@ -1373,14 +1351,18 @@ export default function AtlasExplorer() {
               )
             }
           >
-            生成我的晃悠地图 · MAKE MY MAP
+            生成我的晃悠地图
             <ArrowRight size={17} />
           </button>
         </div>
       </aside>
 
       <div className="atlas-v2-map-tools">
-        <button type="button" onClick={resetWorldView} aria-label="返回世界视图">
+        <button
+          type="button"
+          onClick={() => mapRef.current?.reset()}
+          aria-label="重置当前地图视野"
+        >
           <RotateCcw size={17} />
         </button>
         <span />
@@ -1401,22 +1383,12 @@ export default function AtlasExplorer() {
       </div>
 
       <div className="atlas-v2-map-legend" aria-label="国家熟度图例">
-        <b>国家熟度 · DONENESS</b>
-        <span>
+        <b>熟度</b>
+        <span className="atlas-v2-heat-scale" aria-hidden="true">
           <i className="heat-1" />
-          三分熟 <small>RARE</small>
-        </span>
-        <span>
           <i className="heat-2" />
-          五分熟 <small>MEDIUM</small>
-        </span>
-        <span>
           <i className="heat-3" />
-          七分熟 <small>MED-WELL</small>
-        </span>
-        <span>
           <i className="heat-4" />
-          全熟 <small>WELL-DONE</small>
         </span>
       </div>
 
@@ -1432,8 +1404,8 @@ export default function AtlasExplorer() {
             <div>
               <small>
                 {editingVisitId
-                  ? "修改这次晃悠 · EDIT THIS ROAM"
-                  : "添加城市到访 · ADD A CITY"}
+                  ? "修改这次晃悠"
+                  : "添加城市到访"}
               </small>
               <h2>{candidate.name}</h2>
               <p>{candidate.subtitle}</p>
@@ -1451,7 +1423,7 @@ export default function AtlasExplorer() {
           <div className="atlas-v2-date-field">
             <span>
               <CalendarDays size={15} />
-              到访日期 · DATE
+              到访日期
             </span>
             <div className="atlas-v2-date-selects">
               <label>
@@ -1512,7 +1484,7 @@ export default function AtlasExplorer() {
           <fieldset className="atlas-v2-travel-picker">
             <legend>
               <MapPin size={15} />
-              怎么晃的 · TRIP TYPE
+              怎么晃的
             </legend>
             <div>
               {TRAVEL_TYPE_OPTIONS.map((option) => (
@@ -1527,7 +1499,6 @@ export default function AtlasExplorer() {
                   title={option.description}
                 >
                   <strong>{option.label}</strong>
-                  <small>{option.english}</small>
                 </button>
               ))}
             </div>
@@ -1542,7 +1513,7 @@ export default function AtlasExplorer() {
             >
               <span>
                 <Landmark size={15} />
-                为你推荐 · RECOMMENDED SPOTS
+                为你推荐
                 <small>
                   {landmarkRecommendationsLoading
                     ? `正在搜罗${candidate.name}的好去处…`
@@ -1634,8 +1605,8 @@ export default function AtlasExplorer() {
             >
               <Check size={16} />
               {editingVisitId
-                ? "保存修改 · SAVE CHANGES"
-                : "收下这次晃悠 · SAVE THIS ROAM"}
+                ? "保存修改"
+                : "收下这次晃悠"}
             </button>
           </footer>
         </section>

@@ -77,49 +77,42 @@ export function chinaProvinceKey(
 export const TRAVEL_TYPE_OPTIONS: Array<{
   value: TravelType;
   label: string;
-  english: string;
   description: string;
   score: 1 | 2 | 3 | 4 | 5 | 6;
 }> = [
   {
     value: "路过",
     label: "路过",
-    english: "PASSING BY",
     description: "短暂停留",
     score: 1,
   },
   {
     value: "旅游",
     label: "旅游",
-    english: "HOLIDAY",
     description: "专程游览",
     score: 2,
   },
   {
     value: "出差",
     label: "出差",
-    english: "BUSINESS",
     description: "工作到访",
     score: 3,
   },
   {
     value: "短居 / 留学",
     label: "短居 / 留学",
-    english: "STUDY / SHORT STAY",
     description: "阶段生活",
     score: 4,
   },
   {
     value: "常住",
     label: "常住",
-    english: "LIVING HERE",
     description: "工作 / 生活",
     score: 5,
   },
   {
     value: "出生地",
     label: "出生地",
-    english: "BORN HERE",
     description: "人生起点",
     score: 6,
   },

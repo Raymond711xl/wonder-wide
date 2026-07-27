@@ -2430,3 +2430,190 @@
     font-size: 17px;
   }
 }
+
+/* Reduced chrome, three-step type scale, and direct map manipulation */
+:root {
+  --atlas-type-title: 22px;
+  --atlas-type-note: 12px;
+  --atlas-type-aux: 9px;
+}
+
+.static-atlas-map svg {
+  cursor: default;
+  touch-action: none;
+}
+
+.static-atlas-map[data-can-pan="true"] svg {
+  cursor: grab;
+}
+
+.static-atlas-map.is-dragging svg {
+  cursor: grabbing;
+}
+
+.static-country-badge .badge-count {
+  font-size: 7px;
+}
+
+.city-number {
+  font-size: 8px;
+}
+
+.static-country-badge line,
+.static-country-badge rect,
+.static-country-badge .badge-name,
+.static-country-badge .badge-meta,
+.static-city-marker line,
+.static-city-marker .city-label-card,
+.static-city-marker .city-label-name,
+.static-city-marker .city-label-meta,
+.static-city-marker .city-suggestion-card,
+.static-city-marker .city-suggestion-name {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 130ms ease;
+}
+
+.static-country-badge line {
+  opacity: 0.16;
+}
+
+.static-country-badge:hover line,
+.static-country-badge:focus-visible line,
+.static-country-badge:hover rect,
+.static-country-badge:focus-visible rect,
+.static-country-badge:hover .badge-name,
+.static-country-badge:focus-visible .badge-name,
+.static-country-badge:hover .badge-meta,
+.static-country-badge:focus-visible .badge-meta,
+.static-city-marker:hover line,
+.static-city-marker:focus-visible line,
+.static-city-marker:hover .city-label-card,
+.static-city-marker:focus-visible .city-label-card,
+.static-city-marker:hover .city-label-name,
+.static-city-marker:focus-visible .city-label-name,
+.static-city-marker:hover .city-label-meta,
+.static-city-marker:focus-visible .city-label-meta,
+.static-city-marker:hover .city-suggestion-card,
+.static-city-marker:focus-visible .city-suggestion-card,
+.static-city-marker:hover .city-suggestion-name,
+.static-city-marker:focus-visible .city-suggestion-name {
+  opacity: 1;
+}
+
+.static-atlas-coverage {
+  width: 184px;
+  border-width: 1px;
+  border-radius: 12px;
+  box-shadow: 3px 3px 0 rgba(33, 20, 63, 0.14);
+}
+
+.static-atlas-coverage header {
+  min-height: 42px;
+  padding: 7px 9px;
+}
+
+.static-atlas-coverage header span {
+  max-width: 112px;
+  font-size: 8px;
+  letter-spacing: 0;
+}
+
+.static-atlas-coverage header strong {
+  font-size: 21px;
+}
+
+.static-atlas-coverage-metrics {
+  grid-template-columns: 1fr;
+}
+
+.static-atlas-coverage-metrics span {
+  grid-template-columns: auto 1fr;
+  align-items: baseline;
+  gap: 5px;
+  padding: 7px 9px;
+  font-size: 8px;
+}
+
+.static-atlas-coverage-metrics b {
+  font-size: 12px;
+}
+
+.atlas-v2-map-legend {
+  gap: 6px;
+  padding: 6px 8px;
+  border: 1px solid rgba(33, 20, 63, 0.3);
+  background: rgba(255, 253, 246, 0.7);
+  box-shadow: none;
+  opacity: 0.58;
+  backdrop-filter: blur(8px);
+  transition: opacity 150ms ease;
+}
+
+.atlas-v2-map-legend:hover {
+  opacity: 0.92;
+}
+
+.atlas-v2-map-legend b {
+  padding-right: 6px;
+  border-right: 1px solid rgba(33, 20, 63, 0.18);
+  font-size: var(--atlas-type-aux);
+  font-weight: 800;
+}
+
+.atlas-v2-map-legend .atlas-v2-heat-scale {
+  display: flex;
+  grid-template-columns: none;
+  gap: 3px;
+}
+
+.atlas-v2-map-legend .atlas-v2-heat-scale i {
+  width: 7px;
+  height: 7px;
+  grid-row: auto;
+  border-radius: 50%;
+}
+
+.atlas-v2-panel :where(p, span, b, em, label, button, strong) {
+  font-size: var(--atlas-type-note) !important;
+}
+
+.atlas-v2-panel :where(small, .atlas-v2-eyebrow, .atlas-v2-visit-index, .atlas-v2-visit-details) {
+  font-size: var(--atlas-type-aux) !important;
+}
+
+.atlas-v2-panel :where(
+  .atlas-v2-panel-intro h1,
+  .atlas-v2-roaming-badge > span:nth-child(2) > strong,
+  .atlas-v2-roaming-progress > strong,
+  .atlas-v2-stats > div > strong,
+  .atlas-v2-active-country strong
+) {
+  font-size: var(--atlas-type-title) !important;
+  line-height: 1.05;
+}
+
+.atlas-v2-brand-copy strong {
+  font-size: var(--atlas-type-title);
+}
+
+.atlas-v2-brand-copy small,
+.atlas-v2-step small {
+  font-size: var(--atlas-type-aux);
+}
+
+.atlas-v2-step p {
+  font-size: var(--atlas-type-note);
+}
+
+@media (max-width: 880px) {
+  :root {
+    --atlas-type-title: 20px;
+    --atlas-type-note: 11px;
+    --atlas-type-aux: 8px;
+  }
+
+  .static-atlas-coverage {
+    width: 178px;
+  }
+}
