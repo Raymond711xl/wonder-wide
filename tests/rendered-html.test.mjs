@@ -47,6 +47,11 @@ test("renders the Wander Wide experience", async () => {
   assert.match(html, /atlas-v2-roaming-progress/);
   assert.doesNotMatch(html, /data-testid="map-coverage"/);
   assert.match(html, /atlas-v2-heat-scale/);
+  assert.match(html, /atlas-v2-heat-details/);
+  assert.match(html, /三分熟/);
+  assert.match(html, /五分熟/);
+  assert.match(html, /七分熟/);
+  assert.match(html, /全熟/);
   assert.doesNotMatch(
     html,
     /WORLD COVERAGE|COUNTRIES|CITIES|MY ROAMS|DONENESS|WELL-DONE/,
@@ -97,10 +102,21 @@ test("keeps the two-level static atlas as a client boundary", async () => {
   assert.match(staticCss, /static-country-badge:hover \.badge-name/);
   assert.match(staticCss, /static-city-marker:hover \.city-label-card/);
   assert.match(staticCss, /atlas-v2-heat-scale/);
+  assert.match(staticCss, /atlas-v2-heat-details/);
+  assert.match(
+    staticCss,
+    /data-map-mode="country"[\s\S]*static-city-marker \.city-label-card/,
+  );
   assert.match(staticMap, /world-countries\.geojson/);
   assert.match(staticMap, /viewBox/);
   assert.match(staticMap, /projectCoordinate/);
+  assert.match(staticMap, /MAP_WEST_LONGITUDE = -30/);
+  assert.match(staticMap, /mapLongitude/);
   assert.match(staticMap, /markerScale/);
+  assert.match(staticMap, /fitCountryBounds/);
+  assert.match(staticMap, /placeCountryLabels/);
+  assert.match(staticMap, /static-active-country-name/);
+  assert.match(staticMap, /badge-count-dot/);
   assert.match(staticMap, /country-city-counts\.json/);
   assert.match(staticMap, /country-subdivisions/);
   assert.match(staticMap, /static-atlas-coverage/);

@@ -30,6 +30,9 @@ import {
 const MAP_WIDTH = 1400;
 const MAP_HEIGHT = 760;
 const MAP_ASPECT = MAP_WIDTH / MAP_HEIGHT;
+// Put the map seam in the Atlantic so the reading order becomes
+// Europe → Asia / China → the Americas.
+const MAP_WEST_LONGITUDE = -30;
 const MIN_LATITUDE = -58;
 const MAX_LATITUDE = 84;
 const MIN_VIEWBOX_WIDTH = 42;
@@ -153,6 +156,23 @@ type CityAggregate = {
   landmarks: number;
 };
 
+type CountryLabelItem = {
+  key: string;
+  anchorX: number;
+  anchorY: number;
+  width: number;
+  height: number;
+};
+
+type CountryLabelPlacement = {
+  x: number;
+  y: number;
+  lineX1: number;
+  lineY1: number;
+  lineX2: number;
+  lineY2: number;
+};
+
 const WORLD_VIEW: ViewBox = {
   x: 0,
   y: 0,
@@ -167,9 +187,16 @@ function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
 
+function mapLongitude(longitude: number) {
+  const normalized = ((((longitude + 180) % 360) + 360) % 360) - 180;
+  return normalized < MAP_WEST_LONGITUDE ? normalized + 360 : normalized;
+}
+
 export function projectCoordinate(longitude: number, latitude: number) {
   return {
-    x: ((longitude + 180) / 360) * MAP_WIDTH,
+    x:
+      ((mapLongitude(longitude) - MAP_WEST_LONGITUDE) / 360) *
+      MAP_WIDTH,
     y:
       ((MAX_LATITUDE - clamp(latitude, MIN_LATITUDE, MAX_LATITUDE)) /
         (MAX_LATITUDE - MIN_LATITUDE)) *
@@ -220,23 +247,24 @@ function geometryBounds(geometry: AtlasGeometry): ProjectedBounds {
 
 function ringPath(ring: number[][]) {
   let path = "";
-  let previousLongitude: number | null = null;
+  let previousMappedLongitude: number | null = null;
   let segmentOpen = false;
 
   ring.forEach(([longitude, latitude]) => {
+    const mappedLongitude = mapLongitude(longitude);
     const point = projectCoordinate(longitude, latitude);
-    const crossesDateLine =
-      previousLongitude !== null &&
-      Math.abs(longitude - previousLongitude) > 180;
+    const crossesMapSeam =
+      previousMappedLongitude !== null &&
+      Math.abs(mappedLongitude - previousMappedLongitude) > 180;
 
-    if (!segmentOpen || crossesDateLine) {
+    if (!segmentOpen || crossesMapSeam) {
       if (segmentOpen) path += " Z";
       path += ` M ${point.x.toFixed(2)} ${point.y.toFixed(2)}`;
       segmentOpen = true;
     } else {
       path += ` L ${point.x.toFixed(2)} ${point.y.toFixed(2)}`;
     }
-    previousLongitude = longitude;
+    previousMappedLongitude = mappedLongitude;
   });
 
   return segmentOpen ? `${path} Z` : path;
@@ -292,6 +320,133 @@ function fitBounds(
     width,
     height,
   };
+}
+
+function fitCountryBounds(bounds: ProjectedBounds) {
+  return fitBounds(bounds, 105, 0.08);
+}
+
+function labelConnector(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+) {
+  const lineX2 = clamp(0, x, x + width);
+  const lineY2 = clamp(0, y, y + height);
+  const distance = Math.hypot(lineX2, lineY2) || 1;
+
+  return {
+    lineX1: (lineX2 / distance) * 12,
+    lineY1: (lineY2 / distance) * 12,
+    lineX2,
+    lineY2,
+  };
+}
+
+function placeCountryLabels(
+  items: CountryLabelItem[],
+  markerScale: number,
+  viewBox: ViewBox,
+) {
+  const occupied: Array<{
+    minX: number;
+    minY: number;
+    maxX: number;
+    maxY: number;
+  }> = [];
+  const placements = new Map<string, CountryLabelPlacement>();
+  const gap = 7;
+  const viewport = {
+    minX: viewBox.x / markerScale + 12,
+    minY: viewBox.y / markerScale + 12,
+    maxX: (viewBox.x + viewBox.width) / markerScale - 12,
+    maxY: (viewBox.y + viewBox.height) / markerScale - 12,
+  };
+
+  items.forEach((item) => {
+    const { width, height } = item;
+    const compactCandidates = [
+      { x: 22, y: -height / 2 },
+      { x: 30, y: -height - 10 },
+      { x: 30, y: 10 },
+      { x: -width - 22, y: -height / 2 },
+      { x: -width - 30, y: -height - 10 },
+      { x: -width - 30, y: 10 },
+      { x: -width / 2, y: -height - 24 },
+      { x: -width / 2, y: 24 },
+      { x: 48, y: -height / 2 },
+      { x: -width - 48, y: -height / 2 },
+      { x: 48, y: -height - 28 },
+      { x: -width - 48, y: 28 },
+    ];
+    const radialCandidates = Array.from({ length: 48 }, (_, index) => {
+      const ring = Math.floor(index / 8);
+      const angle = ((index % 8) / 8) * Math.PI * 2;
+      const distance = 72 + ring * 24;
+      return {
+        x: Math.cos(angle) * distance - width / 2,
+        y: Math.sin(angle) * distance - height / 2,
+      };
+    });
+    const candidates = [...compactCandidates, ...radialCandidates];
+    const anchorX = item.anchorX / markerScale;
+    const anchorY = item.anchorY / markerScale;
+    let chosen = candidates.find((candidate) => {
+      const box = {
+        minX: anchorX + candidate.x - gap,
+        minY: anchorY + candidate.y - gap,
+        maxX: anchorX + candidate.x + width + gap,
+        maxY: anchorY + candidate.y + height + gap,
+      };
+      const insideViewport =
+        box.minX >= viewport.minX &&
+        box.maxX <= viewport.maxX &&
+        box.minY >= viewport.minY &&
+        box.maxY <= viewport.maxY;
+      return (
+        insideViewport &&
+        occupied.every(
+          (other) =>
+            box.maxX < other.minX ||
+            box.minX > other.maxX ||
+            box.maxY < other.minY ||
+            box.minY > other.maxY,
+        )
+      );
+    });
+
+    if (!chosen) {
+      chosen = {
+        x:
+          clamp(
+            anchorX + 22,
+            viewport.minX + gap,
+            viewport.maxX - width - gap,
+          ) - anchorX,
+        y:
+          clamp(
+            anchorY - height / 2,
+            viewport.minY + gap,
+            viewport.maxY - height - gap,
+          ) - anchorY,
+      };
+    }
+
+    occupied.push({
+      minX: anchorX + chosen.x - gap,
+      minY: anchorY + chosen.y - gap,
+      maxX: anchorX + chosen.x + width + gap,
+      maxY: anchorY + chosen.y + height + gap,
+    });
+    placements.set(item.key, {
+      x: chosen.x,
+      y: chosen.y,
+      ...labelConnector(chosen.x, chosen.y, width, height),
+    });
+  });
+
+  return placements;
 }
 
 function zoomViewBox(current: ViewBox, factor: number): ViewBox {
@@ -552,7 +707,7 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
         return;
       }
       const country = countryByCode.get(activeCountry.code);
-      if (country) setViewBox(fitBounds(country.bounds));
+      if (country) setViewBox(fitCountryBounds(country.bounds));
     }, [activeCountry, countries.length, countryByCode]);
 
     useImperativeHandle(
@@ -562,7 +717,7 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
           const country = activeCountry
             ? countryByCode.get(activeCountry.code)
             : null;
-          setViewBox(country ? fitBounds(country.bounds) : WORLD_VIEW);
+          setViewBox(country ? fitCountryBounds(country.bounds) : WORLD_VIEW);
         },
         zoomIn() {
           setViewBox((current) => zoomViewBox(current, 0.72));
@@ -572,7 +727,7 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
         },
         focusCountry(countryCode) {
           const country = countryByCode.get(countryCode);
-          if (country) setViewBox(fitBounds(country.bounds));
+          if (country) setViewBox(fitCountryBounds(country.bounds));
         },
       }),
       [activeCountry, countryByCode],
@@ -635,17 +790,17 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
           const country = countryByCode.get(metric.code);
           if (!country) return null;
           const badgeWidth = Math.max(78, metric.name.length * 12 + 34);
-          const offsets = [0, -24, 24, -48, 48, -72, 72];
+          const offsets = [0, -32, 32, -64, 64, -96, 96];
           const offset = offsets.find((candidateOffset) =>
             occupied.every(
               (placed) =>
                 Math.hypot(
                   placed.x - country.labelX,
                   placed.y - (country.labelY + candidateOffset),
-                ) > 24,
+                ) > 31,
             ),
           );
-          const y = country.labelY + (offset ?? 88);
+          const y = country.labelY + (offset ?? 112);
           occupied.push({ x: country.labelX, y });
           return {
             metric,
@@ -671,6 +826,52 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
     // Marker artwork counter-scales around its exact geographic anchor. The
     // anchor itself stays in the map's SVG coordinate system at every zoom.
     const markerScale = clamp(viewBox.width / MAP_WIDTH, 0.085, 1);
+    const activeProjectedCountry = activeCountry
+      ? countryByCode.get(activeCountry.code)
+      : null;
+    const countryLabelPlacements = useMemo(() => {
+      if (!activeCountry) return new Map<string, CountryLabelPlacement>();
+
+      const visitedLabels: CountryLabelItem[] = cityAggregates.map(
+        (aggregate) => {
+          const point = projectCoordinate(
+            aggregate.city.longitude,
+            aggregate.city.latitude,
+          );
+          return {
+            key: `visited:${visitKey(aggregate.city)}`,
+            anchorX: point.x,
+            anchorY: point.y,
+            width: Math.max(76, aggregate.city.name.length * 13 + 48),
+            height: 36,
+          };
+        },
+      );
+      const suggestionLabels: CountryLabelItem[] = countrySuggestions.map(
+        (city) => {
+          const point = projectCoordinate(city.longitude, city.latitude);
+          return {
+            key: `suggestion:${city.id}`,
+            anchorX: point.x,
+            anchorY: point.y,
+            width: Math.max(52, city.name.length * 12 + 20),
+            height: 26,
+          };
+        },
+      );
+
+      return placeCountryLabels(
+        [...visitedLabels, ...suggestionLabels],
+        markerScale,
+        viewBox,
+      );
+    }, [
+      activeCountry,
+      cityAggregates,
+      countrySuggestions,
+      markerScale,
+      viewBox,
+    ]);
 
     function clientToMapPoint(
       clientX: number,
@@ -917,6 +1118,18 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
             </g>
           ) : null}
 
+          {activeCountry && activeProjectedCountry ? (
+            <g
+              className="static-active-country-label"
+              transform={`translate(${activeProjectedCountry.labelX} ${activeProjectedCountry.labelY}) scale(${markerScale})`}
+              aria-hidden="true"
+            >
+              <text className="static-active-country-name" textAnchor="middle">
+                {activeCountry.name}
+              </text>
+            </g>
+          ) : null}
+
           {!activeCountry ? (
             <g className="static-country-badges" aria-label="已去国家标签">
               {worldBadges.map(
@@ -950,7 +1163,7 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
                         x2={(country.labelX - x) / markerScale}
                         y2={(country.labelY - y) / markerScale}
                       />
-                      <circle r="9" />
+                      <circle className="badge-count-dot" r="13" />
                       <text className="badge-count" textAnchor="middle" y="4">
                         {metric.cityCount}
                       </text>
@@ -983,6 +1196,14 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
                   76,
                   aggregate.city.name.length * 13 + 48,
                 );
+                const placement =
+                  countryLabelPlacements.get(
+                    `visited:${visitKey(aggregate.city)}`,
+                  ) ?? {
+                    x: 22,
+                    y: -18,
+                    ...labelConnector(22, -18, labelWidth, 36),
+                  };
                 return (
                   <g
                     key={visitKey(aggregate.city)}
@@ -1001,19 +1222,32 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
                     <text className="city-number" textAnchor="middle" y="4">
                       {aggregate.sequence}
                     </text>
-                    <line x1="12" y1="0" x2="20" y2="0" />
+                    <line
+                      x1={placement.lineX1}
+                      y1={placement.lineY1}
+                      x2={placement.lineX2}
+                      y2={placement.lineY2}
+                    />
                     <rect
                       className="city-label-card"
-                      x="20"
-                      y="-18"
+                      x={placement.x}
+                      y={placement.y}
                       width={labelWidth}
                       height="36"
                       rx="10"
                     />
-                    <text x="30" y="-2" className="city-label-name">
+                    <text
+                      x={placement.x + 10}
+                      y={placement.y + 16}
+                      className="city-label-name"
+                    >
                       {aggregate.city.name}
                     </text>
-                    <text x="30" y="11" className="city-label-meta">
+                    <text
+                      x={placement.x + 10}
+                      y={placement.y + 29}
+                      className="city-label-meta"
+                    >
                       {aggregate.travelType} · {aggregate.landmarks}景
                     </text>
                   </g>
@@ -1023,6 +1257,16 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
               {countrySuggestions.map((city) => {
                 const point = projectCoordinate(city.longitude, city.latitude);
                 const activate = () => onCityOpen(city);
+                const labelWidth = Math.max(
+                  52,
+                  city.name.length * 12 + 20,
+                );
+                const placement =
+                  countryLabelPlacements.get(`suggestion:${city.id}`) ?? {
+                    x: 18,
+                    y: -13,
+                    ...labelConnector(18, -13, labelWidth, 26),
+                  };
                 return (
                   <g
                     key={city.id}
@@ -1035,16 +1279,25 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
                     onKeyDown={(event) => keyboardActivate(event, activate)}
                   >
                     <circle className="city-suggestion-dot" r="4.5" />
-                    <line x1="8" y1="0" x2="16" y2="0" />
+                    <line
+                      x1={placement.lineX1}
+                      y1={placement.lineY1}
+                      x2={placement.lineX2}
+                      y2={placement.lineY2}
+                    />
                     <rect
                       className="city-suggestion-card"
-                      x="16"
-                      y="-13"
-                      width={Math.max(52, city.name.length * 12 + 20)}
+                      x={placement.x}
+                      y={placement.y}
+                      width={labelWidth}
                       height="26"
                       rx="9"
                     />
-                    <text x="27" y="4" className="city-suggestion-name">
+                    <text
+                      x={placement.x + 11}
+                      y={placement.y + 17}
+                      className="city-suggestion-name"
+                    >
                       {city.name}
                     </text>
                   </g>

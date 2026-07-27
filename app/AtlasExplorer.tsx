@@ -1382,7 +1382,11 @@ export default function AtlasExplorer() {
         </button>
       </div>
 
-      <div className="atlas-v2-map-legend" aria-label="国家熟度图例">
+      <div
+        className="atlas-v2-map-legend"
+        aria-label="国家熟度图例，悬停或聚焦查看说明"
+        tabIndex={0}
+      >
         <b>熟度</b>
         <span className="atlas-v2-heat-scale" aria-hidden="true">
           <i className="heat-1" />
@@ -1390,6 +1394,31 @@ export default function AtlasExplorer() {
           <i className="heat-3" />
           <i className="heat-4" />
         </span>
+        <div className="atlas-v2-heat-details">
+          <p>颜色越深，代表你在这个国家留下的足迹越丰富。</p>
+          <div className="atlas-v2-heat-key">
+            <span>
+              <i className="heat-1" />
+              <strong>三分熟</strong>
+              <small>足迹刚刚点亮</small>
+            </span>
+            <span>
+              <i className="heat-2" />
+              <strong>五分熟</strong>
+              <small>去过不止一处</small>
+            </span>
+            <span>
+              <i className="heat-3" />
+              <strong>七分熟</strong>
+              <small>多城或深度停留</small>
+            </span>
+            <span>
+              <i className="heat-4" />
+              <strong>全熟</strong>
+              <small>高频到访或长期生活</small>
+            </span>
+          </div>
+        </div>
       </div>
 
       {candidate ? (
