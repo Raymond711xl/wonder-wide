@@ -42,7 +42,7 @@ test("renders the Wander Wide experience", async () => {
   assert.match(html, />国家</);
   assert.match(html, /搜索城市/);
   assert.match(html, /WANDER WIDE/);
-  assert.match(html, /待出门/);
+  assert.match(html, /晃悠自由人/);
   assert.match(html, /征服全球/);
   assert.match(html, /atlas-v2-roaming-progress/);
   assert.doesNotMatch(html, /data-testid="map-coverage"/);
@@ -65,13 +65,35 @@ test("renders the Wander Wide experience", async () => {
 });
 
 test("keeps the two-level static atlas as a client boundary", async () => {
-  const [page, explorer, staticMap, atlasData, staticCss, layout, packageJson] =
-    await Promise.all([
+  const [
+    page,
+    explorer,
+    staticMap,
+    atlasData,
+    roamingTitles,
+    wanderAlmanac,
+    globalsCss,
+    staticCss,
+    almanacCss,
+    smileySansFont,
+    layout,
+    packageJson,
+  ] = await Promise.all([
       readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
       readFile(new URL("../app/AtlasExplorer.tsx", import.meta.url), "utf8"),
       readFile(new URL("../app/StaticAtlasMap.tsx", import.meta.url), "utf8"),
       readFile(new URL("../app/atlas-data.ts", import.meta.url), "utf8"),
+      readFile(new URL("../app/roaming-titles.ts", import.meta.url), "utf8"),
+      readFile(new URL("../app/WanderAlmanac.tsx", import.meta.url), "utf8"),
+      readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
       readFile(new URL("../app/static-atlas.css", import.meta.url), "utf8"),
+      readFile(new URL("../app/wander-almanac.css", import.meta.url), "utf8"),
+      readFile(
+        new URL(
+          "../public/fonts/SmileySans-Oblique.ttf.woff2",
+          import.meta.url,
+        ),
+      ),
       readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
       readFile(new URL("../package.json", import.meta.url), "utf8"),
     ]);
@@ -88,7 +110,14 @@ test("keeps the two-level static atlas as a client boundary", async () => {
   assert.match(explorer, /返回全球/);
   assert.match(explorer, /openVisitEditor/);
   assert.match(explorer, /editingVisitId/);
-  assert.match(explorer, /roamingBadgeFor/);
+  assert.match(explorer, /evaluateRoamingTitles/);
+  assert.match(explorer, /我的晃悠称号册/);
+  assert.match(explorer, /生成我的晃悠地图/);
+  assert.match(explorer, /<WanderAlmanac/);
+  assert.match(roamingTitles, /高加索三兄弟/);
+  assert.match(roamingTitles, /南法松弛派/);
+  assert.match(roamingTitles, /新马泰三连晃/);
+  assert.match(roamingTitles, /极光带候场人/);
   assert.match(explorer, /WORLD_COUNTRY_TOTAL/);
   assert.match(explorer, /atlas-v2-roaming-progress/);
   assert.match(explorer, /为你推荐/);
@@ -135,6 +164,44 @@ test("keeps the two-level static atlas as a client boundary", async () => {
   assert.match(staticMap, /GeoNames/i);
   assert.match(staticMap, /geoBoundaries/i);
   assert.match(staticMap, /onCityEdit/);
+  assert.match(wanderAlmanac, /我的晃悠地图/);
+  assert.match(wanderAlmanac, /MY PIXEL WORLD/);
+  assert.match(wanderAlmanac, /我点亮的世界。/);
+  assert.match(wanderAlmanac, /这地球，我晃过。/);
+  assert.match(wanderAlmanac, /POSTER_HEIGHT = 1200/);
+  assert.match(wanderAlmanac, /activeTitles\.length/);
+  assert.match(wanderAlmanac, /type AlmanacDimension = "world" \| "china"/);
+  assert.match(wanderAlmanac, /aria-label="地图生成维度"/);
+  assert.match(wanderAlmanac, /MosaicChinaMap/);
+  assert.match(
+    wanderAlmanac,
+    /\/data\/country-subdivisions\/CN\.geojson/,
+  );
+  assert.match(wanderAlmanac, /CHINA_PROVINCE_TOTAL = 34/);
+  assert.match(wanderAlmanac, /chinaFeaturedTitles/);
+  assert.match(wanderAlmanac, /chinaProvinceKey/);
+  assert.match(wanderAlmanac, /马赛克中国地图/);
+  assert.match(wanderAlmanac, /中国晃悠地图/);
+  assert.match(wanderAlmanac, /dimension === "china" \? "中国" : "地球"/);
+  assert.match(wanderAlmanac, /MAP_COLUMNS = 68/);
+  assert.match(wanderAlmanac, /toBlob/);
+  assert.match(wanderAlmanac, /复制文案/);
+  assert.match(wanderAlmanac, /保存图片/);
+  assert.doesNotMatch(wanderAlmanac, /skipFonts/);
+  assert.match(globalsCss, /font-family: "Smiley Sans"/);
+  assert.match(globalsCss, /SmileySans-Oblique\.ttf\.woff2/);
+  assert.match(globalsCss, /--font-sans:/);
+  assert.ok(smileySansFont.byteLength > 1_000_000);
+  assert.match(almanacCss, /\.wander-almanac-poster/);
+  assert.match(almanacCss, /\.wander-almanac-map/);
+  assert.match(almanacCss, /\.wander-almanac-dimension-switch/);
+  assert.doesNotMatch(
+    `${globalsCss}\n${staticCss}\n${almanacCss}`,
+    /Songti SC|STSong|Iowan Old Style|Georgia,\s*serif/,
+  );
+  assert.match(almanacCss, /--almanac-type-title: 54px/);
+  assert.match(almanacCss, /--almanac-type-content: 34px/);
+  assert.match(almanacCss, /--almanac-type-label: 24px/);
   assert.doesNotMatch(staticMap, /static-map-mode-note/);
   assert.doesNotMatch(explorer, /BACK TO WORLD|WORLD COVERAGE|MAKE MY MAP/);
   assert.match(atlasData, /TRAVEL_TYPE_OPTIONS/);
@@ -156,8 +223,10 @@ test("keeps the two-level static atlas as a client boundary", async () => {
   assert.doesNotMatch(explorer, /maplibre/i);
   assert.doesNotMatch(staticMap, /maplibre|ArcGIS|tile\.openstreetmap/i);
   assert.match(layout, /generateMetadata/);
+  assert.match(layout, /wander-almanac\.css/);
   assert.doesNotMatch(layout, /maplibre/i);
   assert.match(packageJson, /"name": "footprint-atlas"/);
+  assert.match(packageJson, /"html-to-image"/);
   assert.doesNotMatch(packageJson, /maplibre/i);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
 });

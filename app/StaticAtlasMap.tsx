@@ -27,8 +27,10 @@ import {
   travelTypeScore,
 } from "./atlas-data";
 
-const MAP_WIDTH = 1400;
-const MAP_HEIGHT = 760;
+export const STATIC_ATLAS_WIDTH = 1400;
+export const STATIC_ATLAS_HEIGHT = 760;
+const MAP_WIDTH = STATIC_ATLAS_WIDTH;
+const MAP_HEIGHT = STATIC_ATLAS_HEIGHT;
 const MAP_ASPECT = MAP_WIDTH / MAP_HEIGHT;
 // Put the map seam in the Atlantic so the reading order becomes
 // Europe → Asia / China → the Americas.
@@ -270,7 +272,7 @@ function ringPath(ring: number[][]) {
   return segmentOpen ? `${path} Z` : path;
 }
 
-function geometryPath(geometry: AtlasGeometry) {
+export function geometryPath(geometry: AtlasGeometry) {
   const polygons =
     geometry.type === "Polygon"
       ? [geometry.coordinates as number[][][]]

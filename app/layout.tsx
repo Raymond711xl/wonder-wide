@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import "./globals.css";
 import "./static-atlas.css";
+import "./wander-almanac.css";
 
 const title = "晃悠 · Wander Wide";
 const description =

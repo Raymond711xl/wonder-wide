@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "Smiley Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/SmileySans-Oblique.ttf.woff2") format("woff2");
+}
+
 :root {
   --paper: #fff3d7;
   --paper-deep: #ffd994;
@@ -13,6 +21,9 @@
   --orange: #ff9b42;
   --line: rgba(33, 20, 63, 0.17);
   --shadow: 0 22px 60px rgba(59, 30, 99, 0.2);
+  --font-sans:
+    "Smiley Sans", "Noto Sans SC", "PingFang SC", "Microsoft YaHei",
+    sans-serif;
 }
 
 * {
@@ -30,14 +41,14 @@ body {
 body {
   color: var(--ink);
   background: var(--paper);
-  font-family:
-    "Avenir Next", "Noto Sans SC", "PingFang SC", "Microsoft YaHei",
-    sans-serif;
+  font-family: var(--font-sans);
   text-rendering: optimizeLegibility;
 }
 
 button,
-input {
+input,
+select,
+textarea {
   font: inherit;
 }
 

@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Award,
+  BookOpen,
   Building2,
   CalendarDays,
   Check,
@@ -13,6 +14,7 @@ import {
   Globe2,
   Landmark,
   LoaderCircle,
+  Lock,
   LocateFixed,
   MapPin,
   Minus,
@@ -21,6 +23,7 @@ import {
   RotateCcw,
   Search,
   Sparkles,
+  Star,
   X,
 } from "lucide-react";
 import {
@@ -35,6 +38,7 @@ import StaticAtlasMap, {
   type CountryMetric,
   type StaticAtlasMapHandle,
 } from "./StaticAtlasMap";
+import WanderAlmanac from "./WanderAlmanac";
 import {
   FEATURED_CITIES,
   chinaProvinceKey,
@@ -50,8 +54,18 @@ import {
   type LandmarkOption,
   type TravelType,
 } from "./atlas-data";
+import {
+  COUNTRY_REGION_FALLBACKS,
+  evaluateRoamingTitles,
+  recommendedRoamingTitle,
+  ROAMING_TITLE_CATEGORIES,
+  ROAMING_TITLES,
+  type CountryRegionMap,
+  type RoamingTitleCategoryId,
+} from "./roaming-titles";
 
 const STORAGE_KEY = "footprint-atlas-m1-city-visits";
+const TITLE_STORAGE_KEY = "footprint-atlas-m1-primary-title";
 const EARLIEST_VISIT_YEAR = 1900;
 const WORLD_COUNTRY_TOTAL = 173;
 const LANDMARK_RECOMMENDATION_LIMIT = 12;
@@ -93,38 +107,15 @@ type CountryGroup = {
   visits: CityVisit[];
 };
 
-type RoamingBadge = {
-  key: "starter" | "china" | "abroad-once" | "abroad-often" | "global-local";
-  title: string;
-  description: string;
-};
-
-const ROAMING_BADGES: Record<RoamingBadge["key"], RoamingBadge> = {
-  starter: {
-    key: "starter",
-    title: "待出门",
-    description: "第一枚城市图钉正在等你",
-  },
-  china: {
-    key: "china",
-    title: "神州晃客",
-    description: "先把家门口晃明白",
-  },
-  "abroad-once": {
-    key: "abroad-once",
-    title: "出境试水员",
-    description: "地球副本已经解锁",
-  },
-  "abroad-often": {
-    key: "abroad-often",
-    title: "地球串门王",
-    description: "护照已经很有故事",
-  },
-  "global-local": {
-    key: "global-local",
-    title: "异乡生活家",
-    description: "不只路过，也认真生活过",
-  },
+type CountryRegionCollection = {
+  features?: Array<{
+    properties?: {
+      ISO_A2_EH?: string;
+      ISO_A2?: string;
+      CONTINENT?: string;
+      SUBREGION?: string;
+    };
+  }>;
 };
 
 function todayISO() {
@@ -292,20 +283,6 @@ function landmarksForCity(city: CityCandidate) {
   return knownCity
     ? LANDMARKS_BY_CITY[`${knownCity.countryCode}:${knownCity.name}`] ?? []
     : [];
-}
-
-function roamingBadgeFor(visits: CityVisit[]) {
-  const overseasVisits = visits.filter(
-    (visit) => visit.countryCode !== "CN",
-  );
-  const hasLivedAbroad = overseasVisits.some((visit) =>
-    ["短居 / 留学", "常住"].includes(visit.travelType),
-  );
-  if (hasLivedAbroad) return ROAMING_BADGES["global-local"];
-  if (overseasVisits.length >= 2) return ROAMING_BADGES["abroad-often"];
-  if (overseasVisits.length === 1) return ROAMING_BADGES["abroad-once"];
-  if (visits.length > 0) return ROAMING_BADGES.china;
-  return ROAMING_BADGES.starter;
 }
 
 function normalizeCityResult(result: NominatimResult): CityCandidate | null {
@@ -553,9 +530,53 @@ export default function AtlasExplorer() {
   const [landmarkError, setLandmarkError] = useState("");
   const [toast, setToast] = useState("");
   const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
+  const [countryRegions, setCountryRegions] = useState<CountryRegionMap>({
+    ...COUNTRY_REGION_FALLBACKS,
+  });
+  const [titleLibraryOpen, setTitleLibraryOpen] = useState(false);
+  const [almanacOpen, setAlmanacOpen] = useState(false);
+  const [activeTitleCategory, setActiveTitleCategory] = useState<
+    "all" | RoamingTitleCategoryId
+  >("all");
+  const [selectedTitleId, setSelectedTitleId] = useState<string | null>(null);
 
   const countryMetrics = useMemo(() => buildCountryMetrics(visits), [visits]);
-  const roamingBadge = useMemo(() => roamingBadgeFor(visits), [visits]);
+  const evaluatedTitles = useMemo(
+    () => evaluateRoamingTitles(visits, countryRegions),
+    [countryRegions, visits],
+  );
+  const unlockedTitles = useMemo(
+    () => evaluatedTitles.filter((title) => title.unlocked),
+    [evaluatedTitles],
+  );
+  const recommendedTitle = useMemo(
+    () => recommendedRoamingTitle(evaluatedTitles),
+    [evaluatedTitles],
+  );
+  const selectedTitle = useMemo(
+    () =>
+      evaluatedTitles.find(
+        (title) => title.id === selectedTitleId && title.unlocked,
+      ),
+    [evaluatedTitles, selectedTitleId],
+  );
+  const roamingBadge = selectedTitle ?? recommendedTitle ?? evaluatedTitles[0];
+  const visibleTitles = useMemo(
+    () =>
+      evaluatedTitles
+        .filter(
+          (title) =>
+            activeTitleCategory === "all" ||
+            title.category === activeTitleCategory,
+        )
+        .sort(
+          (left, right) =>
+            Number(right.unlocked) - Number(left.unlocked) ||
+            right.progress - left.progress ||
+            right.priority - left.priority,
+        ),
+    [activeTitleCategory, evaluatedTitles],
+  );
   const chinaProvinceCount = useMemo(
     () =>
       new Set(
@@ -737,18 +758,56 @@ export default function AtlasExplorer() {
 
   useEffect(() => {
     let savedVisits: CityVisit[] = [];
+    let savedTitleId: string | null = null;
     try {
       const saved = window.localStorage.getItem(STORAGE_KEY);
       if (saved) savedVisits = migrateVisits(JSON.parse(saved));
+      savedTitleId = window.localStorage.getItem(TITLE_STORAGE_KEY);
     } catch {
       // Device-local history is helpful, but the atlas must load without it.
     }
 
     const hydrationTimer = window.setTimeout(() => {
       setVisits(savedVisits);
+      setSelectedTitleId(savedTitleId);
       setHydrated(true);
     }, 0);
     return () => window.clearTimeout(hydrationTimer);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/data/world-countries.geojson")
+      .then((response) => {
+        if (!response.ok) throw new Error("Country regions unavailable");
+        return response.json() as Promise<CountryRegionCollection>;
+      })
+      .then((collection) => {
+        if (cancelled) return;
+        const regions: CountryRegionMap = {
+          ...COUNTRY_REGION_FALLBACKS,
+        };
+        collection.features?.forEach((feature) => {
+          const properties = feature.properties;
+          const code = String(
+            properties?.ISO_A2_EH ?? properties?.ISO_A2 ?? "",
+          ).toUpperCase();
+          const continent = String(properties?.CONTINENT ?? "");
+          const subregion = String(properties?.SUBREGION ?? "");
+          if (!code || code === "-99" || !continent) return;
+          regions[code] = { continent, subregion };
+        });
+        if (regions.CN) regions.TW = regions.CN;
+        setCountryRegions(regions);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setCountryRegions({ ...COUNTRY_REGION_FALLBACKS });
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -759,6 +818,24 @@ export default function AtlasExplorer() {
       // The atlas remains usable without local persistence.
     }
   }, [hydrated, visits]);
+
+  useEffect(() => {
+    if (!hydrated || !selectedTitleId) return;
+    try {
+      window.localStorage.setItem(TITLE_STORAGE_KEY, selectedTitleId);
+    } catch {
+      // Choosing a title still works for the current session.
+    }
+  }, [hydrated, selectedTitleId]);
+
+  useEffect(() => {
+    if (!titleLibraryOpen) return;
+    const closeOnEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") setTitleLibraryOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [titleLibraryOpen]);
 
   useEffect(() => {
     if (!toast) return;
@@ -975,6 +1052,24 @@ export default function AtlasExplorer() {
     mapRef.current?.reset();
   }
 
+  function openTitleLibrary() {
+    closeComposer();
+    setTitleLibraryOpen(true);
+  }
+
+  function openAlmanac() {
+    if (visits.length === 0) return;
+    closeComposer();
+    setTitleLibraryOpen(false);
+    setMobilePanelOpen(false);
+    setAlmanacOpen(true);
+  }
+
+  function choosePrimaryTitle(titleId: string, title: string) {
+    setSelectedTitleId(titleId);
+    showToast(`已把「${title}」设为主称号`);
+  }
+
   return (
     <main className="atlas-v2-shell">
       <StaticAtlasMap
@@ -1151,7 +1246,7 @@ export default function AtlasExplorer() {
         </div>
 
         <section
-          className={`atlas-v2-roaming-badge badge-${roamingBadge.key}`}
+          className={`atlas-v2-roaming-badge tone-${roamingBadge.tone}`}
           aria-label={`当前称号：${roamingBadge.title}`}
         >
           <span className="atlas-v2-roaming-badge-icon">
@@ -1177,6 +1272,18 @@ export default function AtlasExplorer() {
               {formatCoveragePercent(stats.countries, WORLD_COUNTRY_TOTAL)}
             </strong>
           </div>
+          <button
+            type="button"
+            className="atlas-v2-title-library-link"
+            onClick={openTitleLibrary}
+          >
+            <BookOpen size={13} />
+            查看我的称号册
+            <b>
+              {unlockedTitles.length} / {ROAMING_TITLES.length}
+            </b>
+            <ChevronRight size={13} />
+          </button>
         </section>
 
         <div className="atlas-v2-stats" aria-label="足迹统计">
@@ -1345,11 +1452,7 @@ export default function AtlasExplorer() {
             type="button"
             className="atlas-v2-next-button"
             disabled={visits.length === 0}
-            onClick={() =>
-              showToast(
-                `已记录 ${stats.countries} 个国家、${stats.cities} 座城市`,
-              )
-            }
+            onClick={openAlmanac}
           >
             生成我的晃悠地图
             <ArrowRight size={17} />
@@ -1420,6 +1523,194 @@ export default function AtlasExplorer() {
           </div>
         </div>
       </div>
+
+      {titleLibraryOpen ? (
+        <div
+          className="atlas-v2-title-overlay"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setTitleLibraryOpen(false);
+            }
+          }}
+        >
+          <section
+            className="atlas-v2-title-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="roaming-title-library-heading"
+          >
+            <header className="atlas-v2-title-dialog-header">
+              <div>
+                <span>
+                  <Sparkles size={14} />
+                  WANDER TITLE ARCHIVE
+                </span>
+                <h2 id="roaming-title-library-heading">我的晃悠称号册</h2>
+                <p>
+                  一个主称号，多个旅行侧面。已解锁称号都可以自己选作主称号。
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setTitleLibraryOpen(false)}
+                aria-label="关闭晃悠称号册"
+              >
+                <X size={18} />
+              </button>
+            </header>
+
+            <div
+              className={`atlas-v2-title-hero tone-${roamingBadge.tone}`}
+            >
+              <span className="atlas-v2-title-hero-icon">
+                <Award size={24} />
+              </span>
+              <div>
+                <small>
+                  {selectedTitle ? "你选择的主称号" : "系统推荐主称号"}
+                </small>
+                <strong>{roamingBadge.title}</strong>
+                <p>{roamingBadge.description}</p>
+              </div>
+              <div className="atlas-v2-title-unlock-count">
+                <strong>{String(unlockedTitles.length).padStart(2, "0")}</strong>
+                <span>
+                  已解锁
+                  <small>共 {ROAMING_TITLES.length} 枚</small>
+                </span>
+              </div>
+            </div>
+
+            <nav
+              className="atlas-v2-title-categories"
+              aria-label="称号分类"
+            >
+              <button
+                type="button"
+                className={activeTitleCategory === "all" ? "is-active" : ""}
+                aria-pressed={activeTitleCategory === "all"}
+                onClick={() => setActiveTitleCategory("all")}
+              >
+                全部
+                <b>{ROAMING_TITLES.length}</b>
+              </button>
+              {ROAMING_TITLE_CATEGORIES.map((category) => {
+                const categoryTitles = evaluatedTitles.filter(
+                  (title) => title.category === category.id,
+                );
+                const unlockedCount = categoryTitles.filter(
+                  (title) => title.unlocked,
+                ).length;
+                return (
+                  <button
+                    type="button"
+                    key={category.id}
+                    className={
+                      activeTitleCategory === category.id ? "is-active" : ""
+                    }
+                    aria-pressed={activeTitleCategory === category.id}
+                    onClick={() => setActiveTitleCategory(category.id)}
+                    title={category.description}
+                  >
+                    {category.label}
+                    <b>
+                      {unlockedCount}/{categoryTitles.length}
+                    </b>
+                  </button>
+                );
+              })}
+            </nav>
+
+            <div className="atlas-v2-title-grid">
+              {visibleTitles.map((title) => {
+                const category = ROAMING_TITLE_CATEGORIES.find(
+                  (item) => item.id === title.category,
+                );
+                const isPrimary = roamingBadge.id === title.id;
+                return (
+                  <article
+                    key={title.id}
+                    className={[
+                      "atlas-v2-title-card",
+                      `tone-${title.tone}`,
+                      title.unlocked ? "is-unlocked" : "is-locked",
+                      isPrimary ? "is-primary" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                  >
+                    <div className="atlas-v2-title-card-head">
+                      <span>
+                        {title.unlocked ? (
+                          <Award size={16} />
+                        ) : (
+                          <Lock size={14} />
+                        )}
+                      </span>
+                      <small>{category?.label}</small>
+                      {isPrimary ? <b>主称号</b> : null}
+                    </div>
+                    <strong>{title.title}</strong>
+                    <p>{title.description}</p>
+                    {title.unlocked ? (
+                      <button
+                        type="button"
+                        disabled={isPrimary}
+                        onClick={() =>
+                          choosePrimaryTitle(title.id, title.title)
+                        }
+                      >
+                        {isPrimary ? (
+                          <>
+                            <Check size={13} />
+                            当前主称号
+                          </>
+                        ) : (
+                          <>
+                            <Star size={13} />
+                            设为主称号
+                          </>
+                        )}
+                      </button>
+                    ) : (
+                      <div className="atlas-v2-title-progress-wrap">
+                        <div className="atlas-v2-title-progress">
+                          <span
+                            style={{
+                              width: `${Math.max(4, title.progress * 100)}%`,
+                            }}
+                          />
+                        </div>
+                        <small>{title.progressLabel}</small>
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+
+            <footer className="atlas-v2-title-dialog-footer">
+              <span>
+                <BookOpen size={13} />
+                称号会随足迹自动解锁，不做全球排名。
+              </span>
+              <span>专属小图标将在下一阶段统一设计。</span>
+            </footer>
+          </section>
+        </div>
+      ) : null}
+
+      {almanacOpen ? (
+        <WanderAlmanac
+          visits={visits}
+          countryMetrics={countryMetrics}
+          countryRegions={countryRegions}
+          primaryTitle={roamingBadge}
+          unlockedTitles={unlockedTitles}
+          onClose={() => setAlmanacOpen(false)}
+          onNotice={showToast}
+        />
+      ) : null}
 
       {candidate ? (
         <section
