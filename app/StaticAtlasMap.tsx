@@ -581,6 +581,8 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
     const [cityCatalog, setCityCatalog] = useState<CityCatalog | null>(null);
     const [capitalCatalog, setCapitalCatalog] =
       useState<CapitalCatalog | null>(null);
+    const [isCompactViewport, setIsCompactViewport] = useState(false);
+    const [compactViewportWidth, setCompactViewportWidth] = useState(880);
     const [subdivisions, setSubdivisions] = useState<ProjectedSubdivision[]>(
       [],
     );
@@ -589,6 +591,21 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
     const [isDragging, setIsDragging] = useState(false);
     const svgRef = useRef<SVGSVGElement | null>(null);
     const pointerDragRef = useRef<PointerDrag | null>(null);
+
+    useEffect(() => {
+      const media = window.matchMedia("(max-width: 880px)");
+      const updateViewport = () => {
+        setIsCompactViewport(media.matches);
+        setCompactViewportWidth(window.innerWidth);
+      };
+      updateViewport();
+      media.addEventListener("change", updateViewport);
+      window.addEventListener("resize", updateViewport);
+      return () => {
+        media.removeEventListener("change", updateViewport);
+        window.removeEventListener("resize", updateViewport);
+      };
+    }, []);
 
     const countryByCode = useMemo(
       () => new Map(countries.map((country) => [country.code, country])),
@@ -886,7 +903,15 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
 
     // Marker artwork counter-scales around its exact geographic anchor. The
     // anchor itself stays in the map's SVG coordinate system at every zoom.
-    const markerScale = clamp(viewBox.width / MAP_WIDTH, 0.085, 1);
+    const baseMarkerScale = clamp(viewBox.width / MAP_WIDTH, 0.085, 1);
+    const compactMarkerScale =
+      (viewBox.width / Math.max(compactViewportWidth, 320)) *
+      (activeCountry ? 1 : 0.67);
+    const markerScale = isCompactViewport
+      ? compactMarkerScale
+      : baseMarkerScale;
+    const activeCountryNameScale =
+      baseMarkerScale * (isCompactViewport ? 1.12 : 1);
     const activeProjectedCountry = activeCountry
       ? countryByCode.get(activeCountry.code)
       : null;
@@ -1185,7 +1210,7 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
           {activeCountry && activeProjectedCountry ? (
             <g
               className="static-active-country-label"
-              transform={`translate(${activeProjectedCountry.labelX} ${activeProjectedCountry.labelY}) scale(${markerScale})`}
+              transform={`translate(${activeProjectedCountry.labelX} ${activeProjectedCountry.labelY}) scale(${activeCountryNameScale})`}
               aria-hidden="true"
             >
               <text className="static-active-country-name" textAnchor="middle">
@@ -1221,6 +1246,14 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
                     }
                   >
                     <g transform={`scale(${markerScale})`}>
+                      <rect
+                        className="badge-hit-target"
+                        x="-24"
+                        y="-36"
+                        width={badgeWidth + 66}
+                        height="72"
+                        rx="20"
+                      />
                       <line
                         x1="0"
                         y1="0"
@@ -1281,6 +1314,7 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
                       keyboardActivate(event, () => onCityEdit(aggregate.city))
                     }
                   >
+                    <circle className="city-hit-target" r="22" />
                     <circle className="city-halo" r="13" />
                     <circle className="city-sequence" r="9" />
                     <text className="city-number" textAnchor="middle" y="4">
@@ -1344,6 +1378,7 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
                     onClick={activate}
                     onKeyDown={(event) => keyboardActivate(event, activate)}
                   >
+                    <circle className="city-hit-target" r="22" />
                     <circle className="city-suggestion-dot" r="4.5" />
                     {isCapital ? (
                       <circle className="city-capital-ring" r="8.5" />

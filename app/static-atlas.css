@@ -4193,7 +4193,16 @@
   .city-suggestion-card,
 .static-atlas-map[data-map-mode="country"]
   .static-city-marker.is-suggestion
-  .city-suggestion-name {
+  .city-suggestion-name,
+.static-atlas-map[data-map-mode="country"]
+  .static-city-marker.is-visited
+  .city-label-card,
+.static-atlas-map[data-map-mode="country"]
+  .static-city-marker.is-visited
+  .city-label-name,
+.static-atlas-map[data-map-mode="country"]
+  .static-city-marker.is-visited
+  .city-label-meta {
   pointer-events: auto;
 }
 
@@ -4298,5 +4307,112 @@
 
   .atlas-v2-shell[data-mobile-panel="collapsed"] .atlas-v2-toast {
     bottom: 82px;
+  }
+}
+
+/* Phone touch targets, scroll-to-sheet handoff, and compact achievement card. */
+.badge-hit-target,
+.city-hit-target {
+  fill: rgba(33, 20, 63, 0.001);
+  stroke: none;
+  pointer-events: all;
+}
+
+@media (max-width: 880px) {
+  .static-country-badge .badge-count-dot {
+    r: 17px;
+  }
+
+  .static-country-badge .badge-count {
+    font-size: 14px;
+  }
+
+  .static-country-badge .badge-name {
+    font-size: 18px;
+  }
+
+  .static-country-badge .badge-meta {
+    font-size: 12px;
+  }
+
+  .static-city-marker.is-visited .city-halo {
+    r: 17px;
+  }
+
+  .static-city-marker.is-visited .city-sequence {
+    r: 12px;
+  }
+
+  .static-city-marker .city-number {
+    font-size: 12px;
+  }
+
+  .static-city-marker .city-label-name {
+    font-size: 14px;
+  }
+
+  .static-city-marker .city-label-meta {
+    font-size: 10px;
+  }
+
+  .static-city-marker.is-suggestion .city-suggestion-dot {
+    r: 7px;
+  }
+
+  .static-city-marker.is-capital .city-capital-ring {
+    r: 11px;
+  }
+
+  .static-city-marker .city-suggestion-name {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 880px) and (orientation: portrait) {
+  .atlas-v2-panel-section {
+    overscroll-behavior-y: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .atlas-v2-panel-section[data-pulling="true"] {
+    overscroll-behavior: none;
+  }
+
+  .atlas-v2-panel.is-mobile-pulling {
+    transition: none;
+  }
+
+  .atlas-v2-roaming-badge {
+    grid-template-columns: 30px minmax(0, 1fr);
+    column-gap: 7px;
+    margin: 5px 14px 0;
+    padding: 6px 8px 0;
+  }
+
+  .atlas-v2-roaming-badge-icon {
+    width: 30px;
+    height: 30px;
+  }
+
+  .atlas-v2-roaming-badge strong {
+    font-size: 16px;
+  }
+
+  .atlas-v2-roaming-badge > p {
+    display: none;
+  }
+
+  .atlas-v2-roaming-progress {
+    gap: 6px;
+    margin-top: 3px;
+    padding: 4px 2px 5px;
+  }
+
+  .atlas-v2-roaming-progress small {
+    display: none;
+  }
+
+  .atlas-v2-title-library-link {
+    height: 30px;
   }
 }

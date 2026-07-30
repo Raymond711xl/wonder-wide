@@ -212,6 +212,11 @@ test("keeps the two-level static atlas as a client boundary", async () => {
   assert.match(explorer, /handleMobilePanelPointerStart/);
   assert.match(explorer, /handleMobilePanelPointerEnd/);
   assert.match(explorer, /atlas-v2-mobile-panel-grip/);
+  assert.match(explorer, /handleRecordTouchMove/);
+  assert.match(explorer, /mobileRecordPullRef/);
+  assert.match(explorer, /gesture\.pull >= 72/);
+  assert.match(explorer, /data-pulling=\{mobilePanelPull > 0/);
+  assert.match(explorer, /is-mobile-pulling/);
   assert.match(
     staticCss,
     /Final control alignment and achievement-selection feedback/,
@@ -235,6 +240,16 @@ test("keeps the two-level static atlas as a client boundary", async () => {
   assert.match(staticMap, /capitalCatalog/);
   assert.match(staticMap, /is-capital/);
   assert.match(staticMap, /添加首都/);
+  assert.match(staticMap, /isCompactViewport/);
+  assert.match(staticMap, /compactViewportWidth/);
+  assert.match(staticMap, /window\.matchMedia\("\(max-width: 880px\)"\)/);
+  assert.match(
+    staticMap,
+    /viewBox\.width \/ Math\.max\(compactViewportWidth, 320\)/,
+  );
+  assert.match(staticMap, /activeCountry \? 1 : 0\.67/);
+  assert.match(staticMap, /badge-hit-target/);
+  assert.match(staticMap, /city-hit-target/);
   assert.match(staticMap, /country-subdivisions/);
   assert.match(staticMap, /static-atlas-coverage/);
   assert.match(staticMap, /formatCoverage/);
@@ -252,6 +267,16 @@ test("keeps the two-level static atlas as a client boundary", async () => {
   assert.match(staticMap, /GeoNames/i);
   assert.match(staticMap, /geoBoundaries/i);
   assert.match(staticMap, /onCityEdit/);
+  assert.match(
+    staticCss,
+    /Phone touch targets, scroll-to-sheet handoff, and compact achievement card/,
+  );
+  assert.match(staticCss, /\.badge-hit-target,\s*\.city-hit-target/);
+  assert.match(staticCss, /overscroll-behavior-y: none/);
+  assert.match(
+    staticCss,
+    /\.atlas-v2-roaming-badge > p \{\s*display: none;/,
+  );
   assert.match(
     wanderAlmanac,
     /我的\{dimension === "china" \? "中国" : "世界"\}打卡地图/,

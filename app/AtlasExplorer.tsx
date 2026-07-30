@@ -32,7 +32,11 @@ import {
   useRef,
   useState,
 } from "react";
-import type { FormEvent, PointerEvent as ReactPointerEvent } from "react";
+import type {
+  FormEvent,
+  PointerEvent as ReactPointerEvent,
+  TouchEvent as ReactTouchEvent,
+} from "react";
 import StaticAtlasMap, {
   type CountryMetric,
   type StaticAtlasMapHandle,
@@ -584,7 +588,15 @@ export default function AtlasExplorer() {
   const mobilePanelGestureRef = useRef<{
     startY: number;
     zone: MobilePanelGestureZone;
+    pointerType: string;
+    position: MobilePanelPosition;
   } | null>(null);
+  const mobileRecordPullRef = useRef<{
+    active: boolean;
+    lastY: number;
+    pull: number;
+  } | null>(null);
+  const [mobilePanelPull, setMobilePanelPull] = useState(0);
   const [countryRegions, setCountryRegions] = useState<CountryRegionMap>({
     ...COUNTRY_REGION_FALLBACKS,
   });
@@ -1370,7 +1382,12 @@ export default function AtlasExplorer() {
       : target?.closest(".atlas-v2-mobile-panel-grip")
         ? "grip"
         : "summary";
-    mobilePanelGestureRef.current = { startY: event.clientY, zone };
+    mobilePanelGestureRef.current = {
+      startY: event.clientY,
+      zone,
+      pointerType: event.pointerType,
+      position: mobilePanelPosition,
+    };
   }
 
   function handleMobilePanelPointerEnd(
@@ -1379,6 +1396,13 @@ export default function AtlasExplorer() {
     const gesture = mobilePanelGestureRef.current;
     mobilePanelGestureRef.current = null;
     if (!gesture) return;
+    if (
+      gesture.pointerType === "touch" &&
+      gesture.zone === "records" &&
+      gesture.position === "expanded"
+    ) {
+      return;
+    }
     const deltaY = event.clientY - gesture.startY;
     if (Math.abs(deltaY) < 34) return;
 
@@ -1403,6 +1427,7 @@ export default function AtlasExplorer() {
   }
 
   function cycleMobilePanelPosition() {
+    setMobilePanelPull(0);
     setMobilePanelPosition((current) =>
       current === "collapsed"
         ? "docked"
@@ -1410,6 +1435,46 @@ export default function AtlasExplorer() {
           ? "expanded"
           : "docked",
     );
+  }
+
+  function handleRecordTouchStart(
+    event: ReactTouchEvent<HTMLElement>,
+  ) {
+    const touch = event.touches[0];
+    if (!touch) return;
+    mobileRecordPullRef.current = {
+      active: false,
+      lastY: touch.clientY,
+      pull: 0,
+    };
+  }
+
+  function handleRecordTouchMove(event: ReactTouchEvent<HTMLElement>) {
+    const touch = event.touches[0];
+    const gesture = mobileRecordPullRef.current;
+    if (!touch || !gesture || mobilePanelPosition !== "expanded") return;
+
+    const deltaY = touch.clientY - gesture.lastY;
+    gesture.lastY = touch.clientY;
+    const isAtTop = event.currentTarget.scrollTop <= 0.5;
+    if (!gesture.active && (!isAtTop || deltaY <= 0)) return;
+
+    gesture.active = true;
+    gesture.pull = clampNumber(gesture.pull + deltaY, 0, 260);
+    if (gesture.pull > 0) {
+      event.preventDefault();
+      setMobilePanelPull(gesture.pull);
+    }
+  }
+
+  function finishRecordTouchPull() {
+    const gesture = mobileRecordPullRef.current;
+    mobileRecordPullRef.current = null;
+    if (!gesture?.active) return;
+    if (gesture.pull >= 72) {
+      setMobilePanelPosition("docked");
+    }
+    setMobilePanelPull(0);
   }
 
   return (
@@ -1578,8 +1643,13 @@ export default function AtlasExplorer() {
       ) : null}
 
       <aside
-        className={`atlas-v2-panel ${mobilePanelOpen ? "is-open" : ""} is-mobile-${mobilePanelPosition}`}
+        className={`atlas-v2-panel ${mobilePanelOpen ? "is-open" : ""} is-mobile-${mobilePanelPosition} ${mobilePanelPull > 0 ? "is-mobile-pulling" : ""}`}
         data-mobile-position={mobilePanelPosition}
+        style={
+          mobilePanelPull > 0
+            ? { transform: `translateY(${mobilePanelPull}px)` }
+            : undefined
+        }
         onPointerDown={handleMobilePanelPointerStart}
         onPointerUp={handleMobilePanelPointerEnd}
         onPointerCancel={() => {
@@ -1692,8 +1762,14 @@ export default function AtlasExplorer() {
 
         <section
           className="atlas-v2-panel-section"
+          data-pulling={mobilePanelPull > 0 ? "true" : "false"}
+          onTouchStart={handleRecordTouchStart}
+          onTouchMove={handleRecordTouchMove}
+          onTouchEnd={finishRecordTouchPull}
+          onTouchCancel={finishRecordTouchPull}
           onScroll={(event) => {
             if (event.currentTarget.scrollTop > 4) {
+              setMobilePanelPull(0);
               setMobilePanelPosition("expanded");
             }
           }}
