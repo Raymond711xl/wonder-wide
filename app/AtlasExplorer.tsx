@@ -1310,7 +1310,9 @@ export default function AtlasExplorer() {
     }
     const isSelected = featuredTitleIds[scope].includes(titleId);
     if (!isSelected && selectedPosterTitles.length >= MAX_FEATURED_TITLES) {
-      showToast(`海报最多展示 ${MAX_FEATURED_TITLES} 枚成就`);
+      showToast(
+        `已选择 ${MAX_FEATURED_TITLES} 枚海报成就，请先取消一枚再更换`,
+      );
       return;
     }
     setFeaturedTitleIds((current) => ({
@@ -1851,8 +1853,16 @@ export default function AtlasExplorer() {
                 <span>
                   已解锁
                   <small>共 {scopeTitles.length} 枚</small>
-                  <small>
-                    海报已选 {selectedPosterTitles.length}/{MAX_FEATURED_TITLES}
+                  <small
+                    className={
+                      selectedPosterTitles.length >= MAX_FEATURED_TITLES
+                        ? "is-full"
+                        : undefined
+                    }
+                  >
+                    {selectedPosterTitles.length >= MAX_FEATURED_TITLES
+                      ? `已选满 ${MAX_FEATURED_TITLES}/${MAX_FEATURED_TITLES} · 先取消一枚再更换`
+                      : `海报已选 ${selectedPosterTitles.length}/${MAX_FEATURED_TITLES}`}
                   </small>
                 </span>
               </div>
@@ -1927,6 +1937,15 @@ export default function AtlasExplorer() {
                         )}
                       </span>
                       <small>{category?.label}</small>
+                      {isPosterSelected && !isPrimary ? (
+                        <i
+                          className="atlas-v2-title-poster-mark"
+                          aria-label="已选入海报"
+                          title="已选入海报"
+                        >
+                          <Check size={14} />
+                        </i>
+                      ) : null}
                     </div>
                     <strong>{title.title}</strong>
                     <p>{title.description}</p>

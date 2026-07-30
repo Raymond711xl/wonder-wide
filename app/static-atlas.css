@@ -3934,3 +3934,86 @@
     width: min(318px, calc(100vw - 72px));
   }
 }
+
+/* Final control alignment and achievement-selection feedback */
+.atlas-v2-map-legend {
+  right: 20px;
+  width: 108px;
+  height: 40px;
+  min-height: 40px;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  align-content: center;
+  gap: 9px;
+  padding: 0 11px;
+}
+
+.atlas-v2-map-legend b {
+  height: 100%;
+  display: flex !important;
+  align-items: center;
+  align-self: stretch;
+  padding: 0 9px 0 0;
+  line-height: 1;
+}
+
+.atlas-v2-map-legend .atlas-v2-heat-scale {
+  height: 100%;
+  align-items: center;
+  align-self: stretch;
+}
+
+.atlas-v2-map-legend:hover,
+.atlas-v2-map-legend:focus-visible {
+  right: 68px;
+  height: auto;
+  min-height: 40px;
+  padding: 8px 11px;
+}
+
+.atlas-v2-toast {
+  z-index: 240;
+}
+
+.atlas-v2-title-unlock-count > span small.is-full {
+  width: fit-content;
+  margin-top: 4px;
+  padding: 4px 7px;
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+  color: var(--ink) !important;
+  background: var(--title-accent);
+  font-weight: 900;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.atlas-v2-title-card-head {
+  grid-template-columns: 31px minmax(0, 1fr) auto;
+}
+
+.atlas-v2-title-poster-mark {
+  width: 27px;
+  height: 27px;
+  display: grid;
+  place-items: center;
+  border: 1.5px solid var(--ink);
+  border-radius: 50%;
+  color: var(--ink);
+  background: var(--title-accent);
+  box-shadow: 2px 2px 0 var(--ink);
+  font-style: normal;
+}
+
+@media (max-width: 480px) {
+  .atlas-v2-map-legend {
+    right: 12px;
+    width: 106px;
+  }
+
+  .atlas-v2-map-legend:hover,
+  .atlas-v2-map-legend:focus-visible {
+    right: 60px;
+    width: min(318px, calc(100vw - 72px));
+  }
+}

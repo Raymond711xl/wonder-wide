@@ -748,86 +748,106 @@
 
 .wander-almanac-south-china-sea {
   position: absolute;
-  top: 35%;
-  right: 4.5%;
-  width: 11.5%;
-  height: 54%;
+  top: 45%;
+  right: 4.2%;
+  width: 10.5%;
+  height: 46%;
   box-sizing: border-box;
-  border-right: 2px dashed rgba(33, 20, 63, 0.7);
-  border-bottom: 2px dashed rgba(33, 20, 63, 0.7);
-  border-left: 2px dashed rgba(33, 20, 63, 0.7);
-  border-radius: 0 0 46% 46% / 0 0 24% 24%;
+  overflow: hidden;
+  border: 1.5px solid rgba(33, 20, 63, 0.72);
+  border-radius: 10px;
   color: var(--almanac-ink);
+  background: rgba(142, 222, 224, 0.76);
+  box-shadow: 3px 3px 0 rgba(255, 79, 120, 0.82);
   pointer-events: none;
-  transform: rotate(-3deg);
 }
 
-.wander-almanac-south-china-sea > span {
-  position: absolute;
-  top: 1%;
-  left: 50%;
-  padding: 2px 5px;
-  border-radius: 999px;
-  background: rgba(255, 248, 232, 0.88);
-  font-size: 13px;
-  font-style: normal;
+.wander-almanac-south-china-sea > header {
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 0 7px;
+  border-bottom: 1px solid rgba(33, 20, 63, 0.28);
+  background: rgba(255, 248, 232, 0.9);
+}
+
+.wander-almanac-south-china-sea > header strong,
+.wander-almanac-south-china-sea > header small {
+  font-size: 12px;
   font-weight: 900;
   line-height: 1;
   white-space: nowrap;
-  transform: translate(-50%, -50%) rotate(3deg);
 }
 
-.wander-almanac-south-china-sea > i {
+.wander-almanac-south-china-sea > header small {
+  color: rgba(33, 20, 63, 0.66);
+}
+
+.wander-almanac-south-china-sea-plot {
   position: absolute;
-  width: 7px;
-  height: 7px;
-  border: 1px solid rgba(33, 20, 63, 0.55);
+  inset: 35px 7px 8px;
+}
+
+.wander-almanac-south-china-sea-dash {
+  position: absolute;
+  width: 13px;
+  height: 2px;
+  border-radius: 999px;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(33, 20, 63, 0.72) 0 58%,
+      transparent 58% 76%,
+      rgba(33, 20, 63, 0.72) 76% 100%
+    );
+}
+
+.wander-almanac-south-china-sea-island {
+  position: absolute;
+  transform: translate(-50%, -50%);
+}
+
+.wander-almanac-south-china-sea-island > i {
+  width: 6px;
+  height: 6px;
+  display: block;
+  border: 1px solid rgba(33, 20, 63, 0.8);
   border-radius: 2px;
   background: #fff8e8;
-  box-shadow: 7px 5px 0 rgba(255, 248, 232, 0.94);
+  box-shadow: 1px 1px 0 rgba(33, 20, 63, 0.28);
 }
 
-.wander-almanac-south-china-sea > i:nth-of-type(1) {
-  top: 17%;
-  left: 32%;
+.wander-almanac-south-china-sea-island.is-current-name > i {
+  width: 5px;
+  height: 5px;
+  background: var(--almanac-lime);
 }
 
-.wander-almanac-south-china-sea > i:nth-of-type(2) {
-  top: 30%;
-  left: 58%;
-}
-
-.wander-almanac-south-china-sea > i:nth-of-type(3) {
-  top: 44%;
-  left: 37%;
-}
-
-.wander-almanac-south-china-sea > i:nth-of-type(4) {
-  top: 57%;
-  left: 63%;
-}
-
-.wander-almanac-south-china-sea > i:nth-of-type(5) {
-  top: 70%;
-  left: 40%;
-}
-
-.wander-almanac-south-china-sea > i:nth-of-type(6) {
-  top: 82%;
-  left: 55%;
-}
-
-.wander-almanac-south-china-sea > em {
+.wander-almanac-south-china-sea-island > small {
   position: absolute;
-  right: 7%;
-  bottom: 6%;
-  color: rgba(33, 20, 63, 0.78);
+  color: rgba(33, 20, 63, 0.82);
   font-size: 12px;
-  font-style: normal;
   font-weight: 900;
   line-height: 1;
   white-space: nowrap;
-  transform: rotate(3deg);
+}
+
+.wander-almanac-south-china-sea-island.label-left > small {
+  top: -2px;
+  right: 9px;
+}
+
+.wander-almanac-south-china-sea-island.label-right > small {
+  top: -2px;
+  left: 9px;
+}
+
+.wander-almanac-south-china-sea-island.label-below > small {
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 .wander-almanac-map-section > footer {

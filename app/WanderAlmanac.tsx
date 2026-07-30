@@ -113,6 +113,118 @@ const CHINA_MAP_CONTENT_WIDTH = 645;
 const CHINA_MAP_CONTENT_HEIGHT = 420;
 const CHINA_MAP_OFFSET_X = (MAP_WIDTH - CHINA_MAP_CONTENT_WIDTH) / 2;
 const CHINA_MAP_OFFSET_Y = (MAP_HEIGHT - CHINA_MAP_CONTENT_HEIGHT) / 2;
+const SOUTH_CHINA_SEA_INSET_BOUNDS = {
+  minLongitude: 107.5,
+  maxLongitude: 122.5,
+  minLatitude: 3,
+  maxLatitude: 23.5,
+} as const;
+const SOUTH_CHINA_SEA_ISLAND_POINTS = [
+  {
+    id: "dongsha",
+    label: "东沙群岛",
+    shortLabel: "东沙",
+    longitude: 116.72,
+    latitude: 20.7,
+    labelPosition: "left",
+  },
+  {
+    id: "xisha",
+    label: "西沙群岛",
+    shortLabel: "西沙",
+    longitude: 112.33,
+    latitude: 16.83,
+    labelPosition: "right",
+  },
+  {
+    id: "zhongsha",
+    label: "中沙群岛",
+    shortLabel: "中沙",
+    longitude: 114.45,
+    latitude: 15.7,
+    labelPosition: "below",
+  },
+  {
+    id: "huangyan",
+    label: "黄岩岛",
+    shortLabel: "黄岩岛",
+    longitude: 117.75,
+    latitude: 15.15,
+    labelPosition: "right",
+  },
+  {
+    id: "nansha",
+    label: "南沙群岛",
+    shortLabel: "南沙",
+    longitude: 113.9,
+    latitude: 10.2,
+    labelPosition: "left",
+  },
+  {
+    id: "taiping",
+    label: "太平岛",
+    longitude: 114.37,
+    latitude: 10.38,
+  },
+  {
+    id: "yongshu",
+    label: "永暑礁",
+    longitude: 112.88,
+    latitude: 9.55,
+  },
+  {
+    id: "meiji",
+    label: "美济礁",
+    longitude: 115.53,
+    latitude: 9.9,
+  },
+  {
+    id: "renai",
+    label: "仁爱礁",
+    longitude: 115.85,
+    latitude: 9.75,
+  },
+  {
+    id: "xiyue-bei",
+    label: "西月北岛",
+    longitude: 115.0267,
+    latitude: 11.085,
+    currentName: true,
+  },
+  {
+    id: "siling-sha",
+    label: "司令沙岛",
+    longitude: 115.2383,
+    latitude: 8.3583,
+    currentName: true,
+  },
+  {
+    id: "yuzui",
+    label: "鱼嘴礁",
+    longitude: 116.6017,
+    latitude: 9.7233,
+    currentName: true,
+  },
+  {
+    id: "zengmu",
+    label: "曾母暗沙",
+    shortLabel: "曾母暗沙",
+    longitude: 112.27,
+    latitude: 3.97,
+    labelPosition: "right",
+  },
+] as const;
+const SOUTH_CHINA_SEA_DASH_SEGMENTS = [
+  { id: "northwest", longitude: 109.5, latitude: 18.3, rotation: 72 },
+  { id: "west-upper", longitude: 108.8, latitude: 14.4, rotation: 82 },
+  { id: "west-lower", longitude: 109.3, latitude: 9.8, rotation: 99 },
+  { id: "southwest", longitude: 111.1, latitude: 5.5, rotation: 25 },
+  { id: "south", longitude: 114.7, latitude: 4.3, rotation: -4 },
+  { id: "southeast", longitude: 118.1, latitude: 6.6, rotation: -42 },
+  { id: "east-lower", longitude: 120.1, latitude: 10.7, rotation: -76 },
+  { id: "east-middle", longitude: 120.7, latitude: 15.1, rotation: -88 },
+  { id: "east-upper", longitude: 120.3, latitude: 19.5, rotation: -106 },
+] as const;
 
 function cityKey(visit: Pick<CityVisit, "countryCode" | "name">) {
   return `${visit.countryCode}:${visit.name.trim().toLowerCase()}`;
@@ -359,6 +471,19 @@ function chinaVisitTilePosition(visit: CityVisit) {
     ),
   );
   return { column, row };
+}
+
+function southChinaSeaInsetPosition(longitude: number, latitude: number) {
+  const {
+    minLongitude,
+    maxLongitude,
+    minLatitude,
+    maxLatitude,
+  } = SOUTH_CHINA_SEA_INSET_BOUNDS;
+  return {
+    left: `${((longitude - minLongitude) / (maxLongitude - minLongitude)) * 100}%`,
+    top: `${((maxLatitude - latitude) / (maxLatitude - minLatitude)) * 100}%`,
+  };
 }
 
 function MosaicWorldMap({
@@ -727,15 +852,54 @@ function MosaicChinaMap({
         </g>
       </svg>
 
-      <div className="wander-almanac-south-china-sea" aria-hidden="true">
-        <span>南海诸岛</span>
-        <i />
-        <i />
-        <i />
-        <i />
-        <i />
-        <i />
-        <em>南沙群岛</em>
+      <div
+        className="wander-almanac-south-china-sea"
+        role="img"
+        aria-label="南海诸岛正北示意，标示东沙、西沙、中沙、南沙群岛、黄岩岛、曾母暗沙及现行岛礁点位"
+      >
+        <header>
+          <strong>南海诸岛</strong>
+          <small>北 ↑</small>
+        </header>
+        <div className="wander-almanac-south-china-sea-plot" aria-hidden="true">
+          {SOUTH_CHINA_SEA_DASH_SEGMENTS.map((segment) => (
+            <i
+              key={segment.id}
+              className="wander-almanac-south-china-sea-dash"
+              style={{
+                ...southChinaSeaInsetPosition(
+                  segment.longitude,
+                  segment.latitude,
+                ),
+                transform: `translate(-50%, -50%) rotate(${segment.rotation}deg)`,
+              }}
+            />
+          ))}
+          {SOUTH_CHINA_SEA_ISLAND_POINTS.map((point) => (
+            <span
+              key={point.id}
+              className={[
+                "wander-almanac-south-china-sea-island",
+                "currentName" in point ? "is-current-name" : "",
+                "labelPosition" in point
+                  ? `label-${point.labelPosition}`
+                  : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              style={southChinaSeaInsetPosition(
+                point.longitude,
+                point.latitude,
+              )}
+              title={point.label}
+            >
+              <i />
+              {"shortLabel" in point ? (
+                <small>{point.shortLabel}</small>
+              ) : null}
+            </span>
+          ))}
+        </div>
       </div>
 
       {tiles.length === 0 && !loadError ? (

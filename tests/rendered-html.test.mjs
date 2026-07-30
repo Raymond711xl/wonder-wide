@@ -121,6 +121,12 @@ test("keeps the two-level static atlas as a client boundary", async () => {
   assert.match(explorer, /MAX_FEATURED_TITLES = 3/);
   assert.match(explorer, /selectedPosterTitles/);
   assert.match(explorer, /toggleFeaturedTitle/);
+  assert.match(
+    explorer,
+    /已选择 \$\{MAX_FEATURED_TITLES\} 枚海报成就，请先取消一枚再更换/,
+  );
+  assert.match(explorer, /atlas-v2-title-poster-mark/);
+  assert.match(explorer, /已选满 \$\{MAX_FEATURED_TITLES\}\/\$\{MAX_FEATURED_TITLES\}/);
   assert.doesNotMatch(explorer, /atlas-v2-title-card-flags/);
   assert.match(explorer, /atlas-v2-date-label/);
   assert.match(
@@ -174,6 +180,12 @@ test("keeps the two-level static atlas as a client boundary", async () => {
   assert.match(staticCss, /static-city-marker:hover \.city-label-card/);
   assert.match(staticCss, /atlas-v2-heat-scale/);
   assert.match(staticCss, /atlas-v2-heat-details/);
+  assert.match(staticCss, /\.atlas-v2-toast \{\s*z-index: 240;/);
+  assert.match(staticCss, /\.atlas-v2-title-poster-mark/);
+  assert.match(
+    staticCss,
+    /Final control alignment and achievement-selection feedback/,
+  );
   assert.match(
     staticCss,
     /data-map-mode="country"[\s\S]*static-city-marker \.city-label-card/,
@@ -224,6 +236,13 @@ test("keeps the two-level static atlas as a client boundary", async () => {
   assert.match(wanderAlmanac, /data-dimension=\{dimension\}/);
   assert.match(wanderAlmanac, /MosaicChinaMap/);
   assert.match(wanderAlmanac, /wander-almanac-south-china-sea/);
+  assert.match(wanderAlmanac, /SOUTH_CHINA_SEA_ISLAND_POINTS/);
+  assert.match(wanderAlmanac, /SOUTH_CHINA_SEA_DASH_SEGMENTS/);
+  assert.match(wanderAlmanac, /southChinaSeaInsetPosition/);
+  assert.match(wanderAlmanac, /西月北岛/);
+  assert.match(wanderAlmanac, /司令沙岛/);
+  assert.match(wanderAlmanac, /南海诸岛正北示意/);
+  assert.doesNotMatch(almanacCss, /transform:\s*rotate\(-3deg\)/);
   assert.match(
     wanderAlmanac,
     /\/data\/country-subdivisions\/CN\.geojson/,
