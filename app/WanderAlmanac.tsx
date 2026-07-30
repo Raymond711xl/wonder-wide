@@ -93,6 +93,7 @@ export type AlmanacDimension = "world" | "china";
 
 const POSTER_WIDTH = 1080;
 const POSTER_HEIGHT = 1200;
+const MAX_POSTER_TITLES = 3;
 const WORLD_COUNTRY_TOTAL = 173;
 const CHINA_PROVINCE_TOTAL = 34;
 const MAP_WIDTH = 1000;
@@ -509,13 +510,7 @@ function MosaicWorldMap({
               height={tileHeight - 2.5}
               rx="2.2"
               fill={tileColor(tile.heatLevel)}
-              opacity={
-                tile.visited
-                  ? 1
-                  : (tile.column * 3 + tile.row * 7) % 13 === 0
-                    ? 0.48
-                    : 0.78
-              }
+              opacity={1}
               className={tile.visited ? "is-visited" : ""}
             />
           ))}
@@ -530,22 +525,14 @@ function MosaicWorldMap({
               })`}
             >
               <rect
-                x={-tileWidth * 0.5}
-                y={-tileHeight * 0.5}
-                width={tileWidth}
-                height={tileHeight}
+                x={-tileWidth * 0.34}
+                y={-tileHeight * 0.34}
+                width={tileWidth * 0.68}
+                height={tileHeight * 0.68}
                 rx="2.5"
                 fill={tileColor(pin.heatLevel)}
-              />
-              <rect
-                x={-tileWidth * 0.66}
-                y={-tileHeight * 0.66}
-                width={tileWidth * 1.32}
-                height={tileHeight * 1.32}
-                rx="4"
-                fill="none"
                 stroke="#21143f"
-                strokeWidth="2.5"
+                strokeWidth="1.5"
               />
               <title>{`${index + 1}. ${pin.name}`}</title>
             </g>
@@ -706,13 +693,7 @@ function MosaicChinaMap({
               height={tileHeight - 2.2}
               rx="2.2"
               fill={tileColor(tile.heatLevel)}
-              opacity={
-                tile.visited
-                  ? 1
-                  : (tile.column * 5 + tile.row * 3) % 11 === 0
-                    ? 0.48
-                    : 0.8
-              }
+              opacity={1}
               className={tile.visited ? "is-visited" : ""}
             />
           ))}
@@ -731,28 +712,31 @@ function MosaicChinaMap({
               })`}
             >
               <rect
-                x={-tileWidth * 0.42}
-                y={-tileHeight * 0.42}
-                width={tileWidth * 0.84}
-                height={tileHeight * 0.84}
+                x={-tileWidth * 0.34}
+                y={-tileHeight * 0.34}
+                width={tileWidth * 0.68}
+                height={tileHeight * 0.68}
                 rx="2.5"
                 fill={tileColor(pin.heatLevel)}
-              />
-              <rect
-                x={-tileWidth * 0.62}
-                y={-tileHeight * 0.62}
-                width={tileWidth * 1.24}
-                height={tileHeight * 1.24}
-                rx="4"
-                fill="none"
                 stroke="#21143f"
-                strokeWidth="2.5"
+                strokeWidth="1.5"
               />
               <title>{`${index + 1}. ${pin.name}`}</title>
             </g>
           ))}
         </g>
       </svg>
+
+      <div className="wander-almanac-south-china-sea" aria-hidden="true">
+        <span>南海诸岛</span>
+        <i />
+        <i />
+        <i />
+        <i />
+        <i />
+        <i />
+        <em>南沙群岛</em>
+      </div>
 
       {tiles.length === 0 && !loadError ? (
         <div className="wander-almanac-map-status">正在拼好你的像素中国</div>
@@ -851,7 +835,7 @@ export default function WanderAlmanac({
     return [
       primary,
       ...selectedTitles.filter((title) => title.id !== primary.id),
-    ].slice(0, 5);
+    ].slice(0, MAX_POSTER_TITLES);
   }, [primaryTitle, selectedTitles, unlockedTitles]);
   const pickerTitles = useMemo(
     () =>
@@ -894,7 +878,6 @@ export default function WanderAlmanac({
   const chinaCoverage = formatCoverage(
     (chinaProvinceNames.length / CHINA_PROVINCE_TOTAL) * 100,
   );
-  const countryNames = countryMetrics.map((metric) => metric.name).join(" · ");
   const activeTitle = activeTitles[0] ?? primaryTitle;
   const activeCoverage =
     dimension === "china" ? chinaCoverage : worldCoverage;
@@ -1048,7 +1031,7 @@ export default function WanderAlmanac({
               onClick={() => setAchievementPickerOpen((current) => !current)}
             >
               <Award size={16} />
-              成就 {activeTitles.length}/5
+              成就 {activeTitles.length}/{MAX_POSTER_TITLES}
               <ChevronDown
                 size={14}
                 className={achievementPickerOpen ? "is-open" : ""}
@@ -1062,7 +1045,9 @@ export default function WanderAlmanac({
               >
                 <header>
                   <strong>选择海报成就</strong>
-                  <small>主成就固定第一，最多展示 5 枚</small>
+                  <small>
+                    主成就固定第一，最多展示 {MAX_POSTER_TITLES} 枚
+                  </small>
                 </header>
                 <div>
                   {pickerTitles.map((title) => {
@@ -1208,27 +1193,13 @@ export default function WanderAlmanac({
 
               <footer>
                 {dimension === "china" ? (
-                  <>
-                    <span>
-                      已点亮 <b>{chinaProvinceNames.length}</b> 个省级区域
-                    </span>
-                    <p>
-                      {chinaProvinceNames.length
-                        ? `${chinaProvinceNames.join(" · ")} · 地图不排名，只记得。`
-                        : "等待第一块像素亮起来"}
-                    </p>
-                  </>
+                  <span>
+                    已点亮 <b>{chinaProvinceNames.length}</b> 个省级区域
+                  </span>
                 ) : (
-                  <>
-                    <span>
-                      已点亮 <b>{stats.countries}</b> 个国家
-                    </span>
-                    <p>
-                      {countryNames
-                        ? `${countryNames} · 地图不排名，只记得。`
-                        : "等待第一块像素亮起来"}
-                    </p>
-                  </>
+                  <span>
+                    已点亮 <b>{stats.countries}</b> 个国家
+                  </span>
                 )}
               </footer>
             </section>

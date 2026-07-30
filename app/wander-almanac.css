@@ -124,7 +124,7 @@
   max-width: min(360px, calc(100vw - 24px));
   padding: 9px 12px;
   color: #21143f;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 850;
   border: 1px solid #21143f;
   border-radius: 999px;
@@ -736,4 +736,101 @@
     left: 8px;
     width: auto;
   }
+}
+
+.wander-almanac-map-tiles rect.is-visited {
+  stroke: none;
+}
+
+.wander-almanac-map-pins {
+  filter: none;
+}
+
+.wander-almanac-south-china-sea {
+  position: absolute;
+  top: 35%;
+  right: 4.5%;
+  width: 11.5%;
+  height: 54%;
+  box-sizing: border-box;
+  border-right: 2px dashed rgba(33, 20, 63, 0.7);
+  border-bottom: 2px dashed rgba(33, 20, 63, 0.7);
+  border-left: 2px dashed rgba(33, 20, 63, 0.7);
+  border-radius: 0 0 46% 46% / 0 0 24% 24%;
+  color: var(--almanac-ink);
+  pointer-events: none;
+  transform: rotate(-3deg);
+}
+
+.wander-almanac-south-china-sea > span {
+  position: absolute;
+  top: 1%;
+  left: 50%;
+  padding: 2px 5px;
+  border-radius: 999px;
+  background: rgba(255, 248, 232, 0.88);
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+  transform: translate(-50%, -50%) rotate(3deg);
+}
+
+.wander-almanac-south-china-sea > i {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border: 1px solid rgba(33, 20, 63, 0.55);
+  border-radius: 2px;
+  background: #fff8e8;
+  box-shadow: 7px 5px 0 rgba(255, 248, 232, 0.94);
+}
+
+.wander-almanac-south-china-sea > i:nth-of-type(1) {
+  top: 17%;
+  left: 32%;
+}
+
+.wander-almanac-south-china-sea > i:nth-of-type(2) {
+  top: 30%;
+  left: 58%;
+}
+
+.wander-almanac-south-china-sea > i:nth-of-type(3) {
+  top: 44%;
+  left: 37%;
+}
+
+.wander-almanac-south-china-sea > i:nth-of-type(4) {
+  top: 57%;
+  left: 63%;
+}
+
+.wander-almanac-south-china-sea > i:nth-of-type(5) {
+  top: 70%;
+  left: 40%;
+}
+
+.wander-almanac-south-china-sea > i:nth-of-type(6) {
+  top: 82%;
+  left: 55%;
+}
+
+.wander-almanac-south-china-sea > em {
+  position: absolute;
+  right: 7%;
+  bottom: 6%;
+  color: rgba(33, 20, 63, 0.78);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+  transform: rotate(3deg);
+}
+
+.wander-almanac-map-section > footer {
+  min-height: 40px;
+  justify-content: flex-start;
 }

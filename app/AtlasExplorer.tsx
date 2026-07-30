@@ -18,7 +18,6 @@ import {
   LocateFixed,
   MapPin,
   Minus,
-  Pencil,
   Plus,
   RotateCcw,
   Search,
@@ -74,7 +73,7 @@ const EARLIEST_VISIT_YEAR = 1900;
 const WORLD_COUNTRY_TOTAL = 173;
 const CHINA_PROVINCE_TOTAL = 34;
 const LANDMARK_RECOMMENDATION_LIMIT = 12;
-const MAX_FEATURED_TITLES = 5;
+const MAX_FEATURED_TITLES = 3;
 const VALID_TRAVEL_TYPES = new Set<TravelType>(
   TRAVEL_TYPE_OPTIONS.map((option) => option.value),
 );
@@ -1688,6 +1687,16 @@ export default function AtlasExplorer() {
                             <Landmark size={12} />
                             {visit.landmarks.length}
                           </span>
+                          <span className="atlas-v2-visit-details">
+                            <Landmark size={12} />
+                            <span>
+                              {visit.landmarks.length
+                                ? visit.landmarks
+                                    .map((landmark) => landmark.name)
+                                    .join(" · ")
+                                : "仅记录城市"}
+                            </span>
+                          </span>
                         </button>
                         <button
                           type="button"
@@ -1697,20 +1706,6 @@ export default function AtlasExplorer() {
                         >
                           <X size={14} />
                         </button>
-                        <div className="atlas-v2-visit-details">
-                          <span>
-                            <Landmark size={12} />
-                            {visit.landmarks.length
-                              ? visit.landmarks
-                                  .map((landmark) => landmark.name)
-                                  .join(" · ")
-                              : "仅记录城市"}
-                          </span>
-                          <span className="atlas-v2-edit-cue">
-                            <Pencil size={11} />
-                            修改
-                          </span>
-                        </div>
                       </li>
                     ))}
                   </ol>
@@ -1825,8 +1820,8 @@ export default function AtlasExplorer() {
                 </h2>
                 <p>
                   {scope === "china"
-                    ? "按版图、区域、城市、景点与玩法解锁；主成就必显，海报最多展示五枚。"
-                    : "按全球足迹解锁成就；主成就必显，海报最多展示五枚。"}
+                    ? `按版图、区域、城市、景点与玩法解锁；主成就必显，海报最多展示 ${MAX_FEATURED_TITLES} 枚。`
+                    : `按全球足迹解锁成就；主成就必显，海报最多展示 ${MAX_FEATURED_TITLES} 枚。`}
                 </p>
               </div>
               <button
@@ -1932,10 +1927,6 @@ export default function AtlasExplorer() {
                         )}
                       </span>
                       <small>{category?.label}</small>
-                      <span className="atlas-v2-title-card-flags">
-                        {isPrimary ? <b>主成就</b> : null}
-                        {isPosterSelected ? <b>海报</b> : null}
-                      </span>
                     </div>
                     <strong>{title.title}</strong>
                     <p>{title.description}</p>
@@ -2058,10 +2049,12 @@ export default function AtlasExplorer() {
           </header>
 
           <div className="atlas-v2-date-field">
-            <span>
+            <span className="atlas-v2-date-label">
               <CalendarDays size={15} />
-              到访日期
-              <small>可选</small>
+              <span>
+                <strong>到访日期</strong>
+                <small>可选</small>
+              </span>
             </span>
             {visitDate ? (
               <div className="atlas-v2-date-entry">
@@ -2210,8 +2203,8 @@ export default function AtlasExplorer() {
                           onClick={() => toggleLandmark(landmark)}
                         >
                           <span>
-                            <strong>{landmark.name}</strong>
                             <small>{landmark.subtitle}</small>
+                            <strong>{landmark.name}</strong>
                           </span>
                           {selected ? <Check size={15} /> : <Plus size={15} />}
                         </button>

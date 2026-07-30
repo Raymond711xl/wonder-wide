@@ -118,9 +118,16 @@ test("keeps the two-level static atlas as a client boundary", async () => {
   assert.match(explorer, /type AtlasScope = "world" \| "china"/);
   assert.match(explorer, /SCOPED_TITLE_STORAGE_KEY/);
   assert.match(explorer, /SCOPED_FEATURED_TITLE_STORAGE_KEY/);
-  assert.match(explorer, /MAX_FEATURED_TITLES = 5/);
+  assert.match(explorer, /MAX_FEATURED_TITLES = 3/);
   assert.match(explorer, /selectedPosterTitles/);
   assert.match(explorer, /toggleFeaturedTitle/);
+  assert.doesNotMatch(explorer, /atlas-v2-title-card-flags/);
+  assert.match(explorer, /atlas-v2-date-label/);
+  assert.match(
+    explorer,
+    /<small>\{landmark\.subtitle\}<\/small>[\s\S]*<strong>\{landmark\.name\}<\/strong>/,
+  );
+  assert.doesNotMatch(explorer, /atlas-v2-edit-cue/);
   assert.match(explorer, /scopeVisits/);
   assert.match(explorer, /data-scope=\{scope\}/);
   assert.match(explorer, /aria-label="足迹维度"/);
@@ -210,11 +217,13 @@ test("keeps the two-level static atlas as a client boundary", async () => {
   assert.match(wanderAlmanac, /这地球，我晃过。/);
   assert.match(wanderAlmanac, /大江南北，我晃过。/);
   assert.match(wanderAlmanac, /POSTER_HEIGHT = 1200/);
+  assert.match(wanderAlmanac, /MAX_POSTER_TITLES = 3/);
   assert.match(wanderAlmanac, /activeTitles\.length/);
   assert.match(wanderAlmanac, /type AlmanacDimension = "world" \| "china"/);
   assert.match(wanderAlmanac, /dimension: AlmanacDimension/);
   assert.match(wanderAlmanac, /data-dimension=\{dimension\}/);
   assert.match(wanderAlmanac, /MosaicChinaMap/);
+  assert.match(wanderAlmanac, /wander-almanac-south-china-sea/);
   assert.match(
     wanderAlmanac,
     /\/data\/country-subdivisions\/CN\.geojson/,
@@ -227,6 +236,7 @@ test("keeps the two-level static atlas as a client boundary", async () => {
   assert.match(wanderAlmanac, /CHINA_MAP_CONTENT_HEIGHT = 420/);
   assert.match(wanderAlmanac, /chinaProvinceKey/);
   assert.match(wanderAlmanac, /马赛克中国地图/);
+  assert.doesNotMatch(wanderAlmanac, /地图不排名，只记得/);
   assert.match(wanderAlmanac, /dimension === "china" \? "中国" : "地球"/);
   assert.doesNotMatch(wanderAlmanac, /setDimension|selectDimension/);
   assert.match(wanderAlmanac, /MAP_COLUMNS = 68/);
