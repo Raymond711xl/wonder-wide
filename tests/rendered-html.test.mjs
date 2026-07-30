@@ -43,7 +43,11 @@ test("renders the Wander Wide experience", async () => {
   assert.match(html, /搜索城市/);
   assert.match(html, /WANDER WIDE/);
   assert.match(html, /晃悠自由人/);
-  assert.match(html, /征服全球/);
+  assert.match(html, /全球足迹/);
+  assert.match(html, /全球进度/);
+  assert.match(html, /足迹数据/);
+  assert.match(html, /生成世界打卡地图/);
+  assert.match(html, /atlas-v2-scope-tabs/);
   assert.match(html, /atlas-v2-roaming-progress/);
   assert.doesNotMatch(html, /data-testid="map-coverage"/);
   assert.match(html, /atlas-v2-heat-scale/);
@@ -111,8 +115,14 @@ test("keeps the two-level static atlas as a client boundary", async () => {
   assert.match(explorer, /openVisitEditor/);
   assert.match(explorer, /editingVisitId/);
   assert.match(explorer, /evaluateRoamingTitles/);
-  assert.match(explorer, /我的晃悠称号册/);
-  assert.match(explorer, /生成我的晃悠地图/);
+  assert.match(explorer, /type AtlasScope = "world" \| "china"/);
+  assert.match(explorer, /SCOPED_TITLE_STORAGE_KEY/);
+  assert.match(explorer, /scopeVisits/);
+  assert.match(explorer, /data-scope=\{scope\}/);
+  assert.match(explorer, /aria-label="足迹维度"/);
+  assert.match(explorer, /中国成就册/);
+  assert.match(explorer, /生成中国打卡地图/);
+  assert.match(explorer, /生成世界打卡地图/);
   assert.match(explorer, /<WanderAlmanac/);
   assert.match(roamingTitles, /高加索三兄弟/);
   assert.match(roamingTitles, /南法松弛派/);
@@ -164,14 +174,21 @@ test("keeps the two-level static atlas as a client boundary", async () => {
   assert.match(staticMap, /GeoNames/i);
   assert.match(staticMap, /geoBoundaries/i);
   assert.match(staticMap, /onCityEdit/);
-  assert.match(wanderAlmanac, /我的晃悠地图/);
+  assert.match(
+    wanderAlmanac,
+    /我的\{dimension === "china" \? "中国" : "世界"\}打卡地图/,
+  );
   assert.match(wanderAlmanac, /MY PIXEL WORLD/);
+  assert.match(wanderAlmanac, /MY CHINA MAP/);
   assert.match(wanderAlmanac, /我点亮的世界。/);
+  assert.match(wanderAlmanac, /我点亮的中国。/);
   assert.match(wanderAlmanac, /这地球，我晃过。/);
+  assert.match(wanderAlmanac, /大江南北，我晃过。/);
   assert.match(wanderAlmanac, /POSTER_HEIGHT = 1200/);
   assert.match(wanderAlmanac, /activeTitles\.length/);
   assert.match(wanderAlmanac, /type AlmanacDimension = "world" \| "china"/);
-  assert.match(wanderAlmanac, /aria-label="地图生成维度"/);
+  assert.match(wanderAlmanac, /dimension: AlmanacDimension/);
+  assert.match(wanderAlmanac, /data-dimension=\{dimension\}/);
   assert.match(wanderAlmanac, /MosaicChinaMap/);
   assert.match(
     wanderAlmanac,
@@ -181,8 +198,8 @@ test("keeps the two-level static atlas as a client boundary", async () => {
   assert.match(wanderAlmanac, /chinaFeaturedTitles/);
   assert.match(wanderAlmanac, /chinaProvinceKey/);
   assert.match(wanderAlmanac, /马赛克中国地图/);
-  assert.match(wanderAlmanac, /中国晃悠地图/);
   assert.match(wanderAlmanac, /dimension === "china" \? "中国" : "地球"/);
+  assert.doesNotMatch(wanderAlmanac, /setDimension|selectDimension/);
   assert.match(wanderAlmanac, /MAP_COLUMNS = 68/);
   assert.match(wanderAlmanac, /toBlob/);
   assert.match(wanderAlmanac, /复制文案/);
@@ -194,7 +211,9 @@ test("keeps the two-level static atlas as a client boundary", async () => {
   assert.ok(smileySansFont.byteLength > 1_000_000);
   assert.match(almanacCss, /\.wander-almanac-poster/);
   assert.match(almanacCss, /\.wander-almanac-map/);
-  assert.match(almanacCss, /\.wander-almanac-dimension-switch/);
+  assert.match(almanacCss, /\.wander-almanac-dimension-label/);
+  assert.match(staticCss, /\.atlas-v2-scope-tabs/);
+  assert.match(staticCss, /\[data-scope="china"\]/);
   assert.doesNotMatch(
     `${globalsCss}\n${staticCss}\n${almanacCss}`,
     /Songti SC|STSong|Iowan Old Style|Georgia,\s*serif/,

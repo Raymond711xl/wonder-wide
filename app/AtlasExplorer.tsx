@@ -66,8 +66,10 @@ import {
 
 const STORAGE_KEY = "footprint-atlas-m1-city-visits";
 const TITLE_STORAGE_KEY = "footprint-atlas-m1-primary-title";
+const SCOPED_TITLE_STORAGE_KEY = "footprint-atlas-m2-primary-titles";
 const EARLIEST_VISIT_YEAR = 1900;
 const WORLD_COUNTRY_TOTAL = 173;
+const CHINA_PROVINCE_TOTAL = 34;
 const LANDMARK_RECOMMENDATION_LIMIT = 12;
 const VALID_TRAVEL_TYPES = new Set<TravelType>(
   TRAVEL_TYPE_OPTIONS.map((option) => option.value),
@@ -102,9 +104,17 @@ type OverpassElement = {
   tags?: Record<string, string>;
 };
 
-type CountryGroup = {
-  metric: CountryMetric;
+type AtlasScope = "world" | "china";
+
+type ScopedTitleIds = Record<AtlasScope, string | null>;
+
+type VisitGroup = {
+  id: string;
+  label: string;
+  meta: string;
+  heatLevel: CountryMetric["heatLevel"];
   visits: CityVisit[];
+  country?: ActiveCountry;
 };
 
 type CountryRegionCollection = {
@@ -508,6 +518,7 @@ export default function AtlasExplorer() {
   const landmarkRecommendationRequest = useRef(0);
   const [visits, setVisits] = useState<CityVisit[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  const [scope, setScope] = useState<AtlasScope>("world");
   const [activeCountry, setActiveCountry] = useState<ActiveCountry | null>(null);
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState<CityCandidate[]>([]);
@@ -538,32 +549,45 @@ export default function AtlasExplorer() {
   const [activeTitleCategory, setActiveTitleCategory] = useState<
     "all" | RoamingTitleCategoryId
   >("all");
-  const [selectedTitleId, setSelectedTitleId] = useState<string | null>(null);
+  const [selectedTitleIds, setSelectedTitleIds] = useState<ScopedTitleIds>({
+    world: null,
+    china: null,
+  });
 
   const countryMetrics = useMemo(() => buildCountryMetrics(visits), [visits]);
   const evaluatedTitles = useMemo(
     () => evaluateRoamingTitles(visits, countryRegions),
     [countryRegions, visits],
   );
+  const scopeTitles = useMemo(
+    () =>
+      evaluatedTitles.filter((title) =>
+        scope === "china"
+          ? title.category === "china"
+          : title.category !== "china",
+      ),
+    [evaluatedTitles, scope],
+  );
   const unlockedTitles = useMemo(
-    () => evaluatedTitles.filter((title) => title.unlocked),
-    [evaluatedTitles],
+    () => scopeTitles.filter((title) => title.unlocked),
+    [scopeTitles],
   );
   const recommendedTitle = useMemo(
-    () => recommendedRoamingTitle(evaluatedTitles),
-    [evaluatedTitles],
+    () => recommendedRoamingTitle(scopeTitles),
+    [scopeTitles],
   );
+  const selectedTitleId = selectedTitleIds[scope];
   const selectedTitle = useMemo(
     () =>
-      evaluatedTitles.find(
+      scopeTitles.find(
         (title) => title.id === selectedTitleId && title.unlocked,
       ),
-    [evaluatedTitles, selectedTitleId],
+    [scopeTitles, selectedTitleId],
   );
-  const roamingBadge = selectedTitle ?? recommendedTitle ?? evaluatedTitles[0];
+  const roamingBadge = selectedTitle ?? recommendedTitle ?? scopeTitles[0];
   const visibleTitles = useMemo(
     () =>
-      evaluatedTitles
+      scopeTitles
         .filter(
           (title) =>
             activeTitleCategory === "all" ||
@@ -575,24 +599,32 @@ export default function AtlasExplorer() {
             right.progress - left.progress ||
             right.priority - left.priority,
         ),
-    [activeTitleCategory, evaluatedTitles],
+    [activeTitleCategory, scopeTitles],
+  );
+  const availableTitleCategories = useMemo(
+    () =>
+      ROAMING_TITLE_CATEGORIES.filter((category) =>
+        scope === "china" ? category.id === "china" : category.id !== "china",
+      ),
+    [scope],
+  );
+  const chinaVisits = useMemo(
+    () => visits.filter((visit) => visit.countryCode === "CN"),
+    [visits],
   );
   const chinaProvinceCount = useMemo(
     () =>
       new Set(
-        visits
-          .filter((visit) => visit.countryCode === "CN")
-          .map(chinaProvinceKey)
-          .filter(Boolean),
+        chinaVisits.map(chinaProvinceKey).filter(Boolean),
       ).size,
-    [visits],
+    [chinaVisits],
   );
   const metricByCode = useMemo(
     () => new Map(countryMetrics.map((metric) => [metric.code, metric])),
     [countryMetrics],
   );
 
-  const stats = useMemo(() => {
+  const worldStats = useMemo(() => {
     const cities = new Set(visits.map(cityKey));
     const landmarks = new Set(
       visits.flatMap((visit) =>
@@ -606,6 +638,39 @@ export default function AtlasExplorer() {
       visits: visits.length,
     };
   }, [countryMetrics.length, visits]);
+  const chinaStats = useMemo(() => {
+    const cities = new Set(chinaVisits.map(cityKey));
+    const landmarks = new Set(
+      chinaVisits.flatMap((visit) =>
+        visit.landmarks.map((landmark) => landmarkKey(visit, landmark)),
+      ),
+    );
+    return {
+      provinces: chinaProvinceCount,
+      cities: cities.size,
+      landmarks: landmarks.size,
+      visits: chinaVisits.length,
+    };
+  }, [chinaProvinceCount, chinaVisits]);
+  const scopeVisits = scope === "china" ? chinaVisits : visits;
+  const scopeCoverage =
+    scope === "china"
+      ? formatCoveragePercent(chinaProvinceCount, CHINA_PROVINCE_TOTAL)
+      : formatCoveragePercent(worldStats.countries, WORLD_COUNTRY_TOTAL);
+  const scopeStatRows: Array<[number, string]> =
+    scope === "china"
+      ? [
+          [chinaStats.provinces, "省级"],
+          [chinaStats.cities, "城市"],
+          [chinaStats.landmarks, "景点"],
+          [chinaStats.visits, "到访"],
+        ]
+      : [
+          [worldStats.countries, "国家"],
+          [worldStats.cities, "城市"],
+          [worldStats.landmarks, "景点"],
+          [worldStats.visits, "到访"],
+        ];
 
   const selectedDateParts = useMemo(() => dateParts(visitDate), [visitDate]);
   const todayParts = useMemo(() => dateParts(todayISO()), []);
@@ -627,27 +692,68 @@ export default function AtlasExplorer() {
       : Number.POSITIVE_INFINITY,
   );
 
-  const countryGroups = useMemo<CountryGroup[]>(
-    () =>
-      countryMetrics.map((metric) => ({
-        metric,
+  const visitGroups = useMemo<VisitGroup[]>(() => {
+    if (scope === "world") {
+      return countryMetrics.map((metric) => ({
+        id: metric.code,
+        label: metric.name,
+        meta: `${metric.cityCount} 城 · ${metric.landmarkCount} 景点`,
+        heatLevel: metric.heatLevel,
         visits: visits
           .filter((visit) => visit.countryCode === metric.code)
           .sort((left, right) => right.visitedOn.localeCompare(left.visitedOn)),
-      })),
-    [countryMetrics, visits],
+        country: { code: metric.code, name: metric.name },
+      }));
+    }
+
+    const grouped = new Map<string, CityVisit[]>();
+    chinaVisits.forEach((visit) => {
+      const province = chinaProvinceKey(visit) || visit.region || "其他地区";
+      grouped.set(province, [...(grouped.get(province) ?? []), visit]);
+    });
+    return [...grouped.entries()]
+      .map(([province, provinceVisits]) => {
+        const cityCount = new Set(provinceVisits.map(cityKey)).size;
+        const landmarkCount = new Set(
+          provinceVisits.flatMap((visit) =>
+            visit.landmarks.map((landmark) => landmarkKey(visit, landmark)),
+          ),
+        ).size;
+        const hiddenScore = provinceVisits.reduce(
+          (total, visit) => total + travelTypeScore(visit.travelType),
+          0,
+        );
+        return {
+          id: `CN:${province}`,
+          label: province,
+          meta: `${cityCount} 城 · ${landmarkCount} 景点`,
+          heatLevel: countryHeat(cityCount, hiddenScore),
+          visits: [...provinceVisits].sort((left, right) =>
+            right.visitedOn.localeCompare(left.visitedOn),
+          ),
+        };
+      })
+      .sort((left, right) => left.label.localeCompare(right.label, "zh-CN"));
+  }, [chinaVisits, countryMetrics, scope, visits]);
+
+  const scopeCountryMetrics = useMemo(
+    () => buildCountryMetrics(scopeVisits),
+    [scopeVisits],
   );
 
   const activeMetric = activeCountry
     ? metricByCode.get(activeCountry.code)
     : undefined;
-  const isChinaActive = activeCountry?.code === "CN";
 
   const showToast = useCallback((message: string) => setToast(message), []);
 
   const selectCountry = useCallback((country: ActiveCountry) => {
+    const nextScope: AtlasScope =
+      country.code.toUpperCase() === "CN" ? "china" : "world";
     landmarkRecommendationRequest.current += 1;
     setLandmarkRecommendationsLoading(false);
+    setScope(nextScope);
+    setActiveTitleCategory(nextScope === "china" ? "china" : "all");
     setActiveCountry({
       code: country.code,
       name: normalizeCountryName(country.name, country.code),
@@ -696,8 +802,12 @@ export default function AtlasExplorer() {
         subtitle: formatLocationSubtitle(city.region, country),
       };
       const seeded = landmarksForCity(normalizedCity);
+      const nextScope: AtlasScope =
+        city.countryCode === "CN" ? "china" : "world";
       setCandidate(normalizedCity);
       setEditingVisitId(null);
+      setScope(nextScope);
+      setActiveTitleCategory(nextScope === "china" ? "china" : "all");
       setActiveCountry({ code: city.countryCode, name: country });
       setVisitDate(todayISO());
       setVisitTravelType("旅游");
@@ -729,8 +839,12 @@ export default function AtlasExplorer() {
         ]),
       );
       const seeded = [...mergedLandmarks.values()];
+      const nextScope: AtlasScope =
+        visit.countryCode === "CN" ? "china" : "world";
       setCandidate(normalizedVisit);
       setEditingVisitId(visit.visitId);
+      setScope(nextScope);
+      setActiveTitleCategory(nextScope === "china" ? "china" : "all");
       setActiveCountry({ code: visit.countryCode, name: country });
       setVisitDate(visit.visitedOn);
       setVisitTravelType(visit.travelType);
@@ -758,18 +872,37 @@ export default function AtlasExplorer() {
 
   useEffect(() => {
     let savedVisits: CityVisit[] = [];
-    let savedTitleId: string | null = null;
+    let savedTitleIds: ScopedTitleIds = { world: null, china: null };
     try {
       const saved = window.localStorage.getItem(STORAGE_KEY);
       if (saved) savedVisits = migrateVisits(JSON.parse(saved));
-      savedTitleId = window.localStorage.getItem(TITLE_STORAGE_KEY);
+      const savedScopedTitles = window.localStorage.getItem(
+        SCOPED_TITLE_STORAGE_KEY,
+      );
+      if (savedScopedTitles) {
+        const parsed = JSON.parse(savedScopedTitles) as Partial<ScopedTitleIds>;
+        savedTitleIds = {
+          world: typeof parsed.world === "string" ? parsed.world : null,
+          china: typeof parsed.china === "string" ? parsed.china : null,
+        };
+      } else {
+        const legacyTitleId = window.localStorage.getItem(TITLE_STORAGE_KEY);
+        const legacyTitle = ROAMING_TITLES.find(
+          (title) => title.id === legacyTitleId,
+        );
+        if (legacyTitleId) {
+          savedTitleIds[
+            legacyTitle?.category === "china" ? "china" : "world"
+          ] = legacyTitleId;
+        }
+      }
     } catch {
       // Device-local history is helpful, but the atlas must load without it.
     }
 
     const hydrationTimer = window.setTimeout(() => {
       setVisits(savedVisits);
-      setSelectedTitleId(savedTitleId);
+      setSelectedTitleIds(savedTitleIds);
       setHydrated(true);
     }, 0);
     return () => window.clearTimeout(hydrationTimer);
@@ -820,13 +953,16 @@ export default function AtlasExplorer() {
   }, [hydrated, visits]);
 
   useEffect(() => {
-    if (!hydrated || !selectedTitleId) return;
+    if (!hydrated) return;
     try {
-      window.localStorage.setItem(TITLE_STORAGE_KEY, selectedTitleId);
+      window.localStorage.setItem(
+        SCOPED_TITLE_STORAGE_KEY,
+        JSON.stringify(selectedTitleIds),
+      );
     } catch {
       // Choosing a title still works for the current session.
     }
-  }, [hydrated, selectedTitleId]);
+  }, [hydrated, selectedTitleIds]);
 
   useEffect(() => {
     if (!titleLibraryOpen) return;
@@ -1038,27 +1174,52 @@ export default function AtlasExplorer() {
     showToast("已移除这次城市记录");
   }
 
-  function resetWorldView() {
-    setActiveCountry(null);
+  function selectScope(nextScope: AtlasScope) {
+    landmarkRecommendationRequest.current += 1;
+    setLandmarkRecommendationsLoading(false);
+    setScope(nextScope);
+    setActiveTitleCategory(nextScope === "china" ? "china" : "all");
+    setTitleLibraryOpen(false);
+    setAlmanacOpen(false);
+    setActiveCountry(
+      nextScope === "china" ? { code: "CN", name: "中国" } : null,
+    );
     closeComposer();
+    setQuery("");
     setSearchResults([]);
     setSearchError("");
-    mapRef.current?.reset();
+    window.requestAnimationFrame(() => {
+      if (nextScope === "china") {
+        mapRef.current?.focusCountry("CN");
+      } else {
+        mapRef.current?.reset();
+      }
+    });
+  }
+
+  function resetWorldView() {
+    selectScope("world");
   }
 
   function showAllFootprints() {
-    setActiveCountry(null);
     closeComposer();
-    mapRef.current?.reset();
+    if (scope === "china") {
+      setActiveCountry({ code: "CN", name: "中国" });
+      window.requestAnimationFrame(() => mapRef.current?.focusCountry("CN"));
+    } else {
+      setActiveCountry(null);
+      mapRef.current?.reset();
+    }
   }
 
   function openTitleLibrary() {
     closeComposer();
+    setActiveTitleCategory(scope === "china" ? "china" : "all");
     setTitleLibraryOpen(true);
   }
 
   function openAlmanac() {
-    if (visits.length === 0) return;
+    if (scopeVisits.length === 0) return;
     closeComposer();
     setTitleLibraryOpen(false);
     setMobilePanelOpen(false);
@@ -1066,12 +1227,14 @@ export default function AtlasExplorer() {
   }
 
   function choosePrimaryTitle(titleId: string, title: string) {
-    setSelectedTitleId(titleId);
-    showToast(`已把「${title}」设为主称号`);
+    setSelectedTitleIds((current) => ({ ...current, [scope]: titleId }));
+    showToast(
+      `已把「${title}」设为${scope === "china" ? "中国" : "全球"}主成就`,
+    );
   }
 
   return (
-    <main className="atlas-v2-shell">
+    <main className="atlas-v2-shell" data-scope={scope}>
       <StaticAtlasMap
         ref={mapRef}
         visits={visits}
@@ -1095,7 +1258,11 @@ export default function AtlasExplorer() {
           </span>
           <span>
             <strong>返回全球</strong>
-            <small>离开 {activeCountry.name}</small>
+            <small>
+              {scope === "china"
+                ? "离开中国维度"
+                : `离开 ${activeCountry.name}`}
+            </small>
           </span>
         </button>
       ) : null}
@@ -1104,8 +1271,8 @@ export default function AtlasExplorer() {
         <button
           type="button"
           className="atlas-v2-brand"
-          onClick={resetWorldView}
-          aria-label="返回静态世界地图"
+          onClick={() => selectScope("world")}
+          aria-label="返回全球足迹"
         >
           <span className="atlas-v2-brand-mark">
             <Compass size={18} strokeWidth={2.2} />
@@ -1116,25 +1283,24 @@ export default function AtlasExplorer() {
           </span>
         </button>
 
-        <div className="atlas-v2-step" aria-label="当前地图视图">
-          <span>
-            {activeCountry ? <MapPin size={14} /> : <Globe2 size={14} />}
-          </span>
-          <p>
-            {activeCountry
-              ? isChinaActive
-                ? "省级区域"
-                : "城市"
-              : "国家"}
-            <small>
-              {activeCountry
-                ? isChinaActive
-                  ? "按省看看你晃到哪了"
-                  : "看你在这里怎么晃"
-                : "看看地球熟到哪了"}
-            </small>
-          </p>
-        </div>
+        <nav className="atlas-v2-scope-tabs" aria-label="足迹维度">
+          <button
+            type="button"
+            className={scope === "world" ? "is-active" : ""}
+            aria-pressed={scope === "world"}
+            onClick={() => selectScope("world")}
+          >
+            全球
+          </button>
+          <button
+            type="button"
+            className={scope === "china" ? "is-active" : ""}
+            aria-pressed={scope === "china"}
+            onClick={() => selectScope("china")}
+          >
+            中国
+          </button>
+        </nav>
 
         <button
           type="button"
@@ -1144,7 +1310,7 @@ export default function AtlasExplorer() {
           aria-label="打开足迹信息"
         >
           <MapPin size={16} />
-          {visits.length}
+          {scopeVisits.length}
         </button>
       </header>
 
@@ -1158,7 +1324,9 @@ export default function AtlasExplorer() {
               setSearchError("");
             }}
             placeholder={
-              activeCountry
+              scope === "china"
+                ? "搜索中国城市，例如：上海、成都"
+                : activeCountry
                 ? `在${activeCountry.name}搜索城市`
                 : "搜索城市，例如：上海、巴黎"
             }
@@ -1225,7 +1393,7 @@ export default function AtlasExplorer() {
         )}
       </section>
 
-      {!activeCountry ? (
+      {scope === "world" && !activeCountry ? (
         <nav className="atlas-v2-breadcrumb" aria-label="地图位置">
           <strong>全球</strong>
           <span>国家地图</span>
@@ -1238,39 +1406,38 @@ export default function AtlasExplorer() {
         <div className="atlas-v2-panel-handle" aria-hidden="true" />
         <div className="atlas-v2-panel-intro">
           <span className="atlas-v2-eyebrow">
-            <Sparkles size={13} />
-            WANDER WIDE · 在地球上瞎晃的正经记录
+            {scope === "china" ? "中国足迹" : "全球足迹"}
           </span>
-          <h1>这地球，咱晃过。</h1>
-          <p>点国家、搜城市、记到访。</p>
+          <h1>
+            {scope === "china" ? "大江南北，咱晃过。" : "这地球，咱晃过。"}
+          </h1>
         </div>
 
         <section
           className={`atlas-v2-roaming-badge tone-${roamingBadge.tone}`}
-          aria-label={`当前称号：${roamingBadge.title}`}
+          aria-label={`当前成就：${roamingBadge.title}`}
         >
           <span className="atlas-v2-roaming-badge-icon">
             <Award size={18} />
           </span>
           <span>
-            <small>你的晃悠称号</small>
+            <small>成就</small>
             <strong>{roamingBadge.title}</strong>
           </span>
           <p>{roamingBadge.description}</p>
           <div
             className="atlas-v2-roaming-progress"
-            aria-label={`征服全球 ${formatCoveragePercent(stats.countries, WORLD_COUNTRY_TOTAL)}`}
+            aria-label={`${scope === "china" ? "中国" : "全球"}进度 ${scopeCoverage}`}
           >
             <span>
-              <small>征服全球</small>
+              <small>{scope === "china" ? "中国进度" : "全球进度"}</small>
               <b>
-                {stats.countries} / {WORLD_COUNTRY_TOTAL} 国家 · {stats.cities}{" "}
-                城市
+                {scope === "china"
+                  ? `${chinaProvinceCount} / ${CHINA_PROVINCE_TOTAL} 省级 · ${chinaStats.cities} 城市`
+                  : `${worldStats.countries} / ${WORLD_COUNTRY_TOTAL} 国家 · ${worldStats.cities} 城市`}
               </b>
             </span>
-            <strong>
-              {formatCoveragePercent(stats.countries, WORLD_COUNTRY_TOTAL)}
-            </strong>
+            <strong>{scopeCoverage}</strong>
           </div>
           <button
             type="button"
@@ -1278,34 +1445,32 @@ export default function AtlasExplorer() {
             onClick={openTitleLibrary}
           >
             <BookOpen size={13} />
-            查看我的称号册
+            查看全部成就
             <b>
-              {unlockedTitles.length} / {ROAMING_TITLES.length}
+              {unlockedTitles.length} / {scopeTitles.length}
             </b>
             <ChevronRight size={13} />
           </button>
         </section>
 
-        <div className="atlas-v2-stats" aria-label="足迹统计">
-          <div>
-            <strong>{String(stats.countries).padStart(2, "0")}</strong>
-            <span>国家</span>
+        <section
+          className="atlas-v2-stats-section"
+          aria-labelledby="atlas-v2-stats-heading"
+        >
+          <span className="atlas-v2-section-kicker" id="atlas-v2-stats-heading">
+            足迹数据
+          </span>
+          <div className="atlas-v2-stats" aria-label="足迹统计">
+            {scopeStatRows.map(([value, label]) => (
+              <div key={label}>
+                <strong>{String(value).padStart(2, "0")}</strong>
+                <span>{label}</span>
+              </div>
+            ))}
           </div>
-          <div>
-            <strong>{String(stats.cities).padStart(2, "0")}</strong>
-            <span>城市</span>
-          </div>
-          <div>
-            <strong>{String(stats.landmarks).padStart(2, "0")}</strong>
-            <span>景点</span>
-          </div>
-          <div>
-            <strong>{String(stats.visits).padStart(2, "0")}</strong>
-            <span>到访</span>
-          </div>
-        </div>
+        </section>
 
-        {activeCountry ? (
+        {scope === "world" && activeCountry ? (
           <section
             className={`atlas-v2-active-country heat-${activeMetric?.heatLevel ?? 0}`}
             aria-label={`${activeCountry.name}概览`}
@@ -1318,9 +1483,7 @@ export default function AtlasExplorer() {
               <strong>{activeCountry.name}</strong>
               <span>
                 {activeMetric
-                  ? isChinaActive
-                    ? `${chinaProvinceCount} 个省级区域 · ${activeMetric.cityCount} 座城市`
-                    : `${activeMetric.cityCount} 座城市 · ${activeMetric.landmarkCount} 个景点`
+                  ? `${activeMetric.cityCount} 座城市 · ${activeMetric.landmarkCount} 个景点`
                   : "尚未记录城市"}
               </span>
             </div>
@@ -1330,64 +1493,82 @@ export default function AtlasExplorer() {
         <section className="atlas-v2-panel-section">
           <div className="atlas-v2-section-title">
             <div>
-              <span>我的晃悠档案</span>
-              <small>{visits.length} 次到访记录</small>
+              <span>打卡记录</span>
+              <small>
+                {scope === "china" ? "中国 · " : "全球 · "}
+                {scopeVisits.length} 次到访
+              </small>
             </div>
-            {visits.length > 0 ? (
+            {scopeVisits.length > 0 ? (
               <button type="button" onClick={showAllFootprints}>
                 <LocateFixed size={15} />
-                全球总览
+                {scope === "china" ? "中国总览" : "全球总览"}
               </button>
             ) : null}
           </div>
 
-          {visits.length === 0 ? (
+          {scopeVisits.length === 0 ? (
             <div className="atlas-v2-empty">
               <div className="atlas-v2-empty-orbit">
                 <Globe2 size={26} />
                 <span />
               </div>
-              <strong>先随便晃一座城市</strong>
+              <strong>
+                {scope === "china"
+                  ? "先记录一座中国城市"
+                  : "先随便晃一座城市"}
+              </strong>
               <p>选日期与到访方式，我们会顺手推荐景点。</p>
               <div className="atlas-v2-suggestions">
-                {FEATURED_CITIES.slice(0, 4).map((city) => (
-                  <button
-                    key={city.id}
-                    type="button"
-                    onClick={() => openCity(city)}
-                  >
-                    {city.name}
-                    <ChevronRight size={14} />
-                  </button>
-                ))}
+                {FEATURED_CITIES.filter(
+                  (city) => scope === "world" || city.countryCode === "CN",
+                )
+                  .slice(0, 4)
+                  .map((city) => (
+                    <button
+                      key={city.id}
+                      type="button"
+                      onClick={() => openCity(city)}
+                    >
+                      {city.name}
+                      <ChevronRight size={14} />
+                    </button>
+                  ))}
               </div>
             </div>
           ) : (
             <div className="atlas-v2-country-groups">
-              {countryGroups.map(({ metric, visits: countryVisits }) => (
+              {visitGroups.map((group) => (
                 <section
-                  key={metric.code}
-                  className={`atlas-v2-country-group heat-${metric.heatLevel}`}
+                  key={group.id}
+                  className={`atlas-v2-country-group heat-${group.heatLevel}`}
                 >
-                  <button
-                    type="button"
-                    className="atlas-v2-country-group-head"
-                    onClick={() =>
-                      selectCountry({ code: metric.code, name: metric.name })
-                    }
-                  >
-                    <span className="atlas-v2-heat-swatch" />
-                    <span>
-                      <strong>{metric.name}</strong>
-                      <small>
-                        {metric.cityCount} 城 · {metric.landmarkCount} 景点
-                      </small>
-                    </span>
-                    <ChevronRight size={15} />
-                  </button>
+                  {group.country ? (
+                    <button
+                      type="button"
+                      className="atlas-v2-country-group-head"
+                      onClick={() => selectCountry(group.country!)}
+                    >
+                      <span className="atlas-v2-heat-swatch" />
+                      <span>
+                        <strong>{group.label}</strong>
+                        <small>{group.meta}</small>
+                      </span>
+                      <ChevronRight size={15} />
+                    </button>
+                  ) : (
+                    <div className="atlas-v2-country-group-head is-static">
+                      <span className="atlas-v2-heat-swatch" />
+                      <span>
+                        <strong>{group.label}</strong>
+                        <small>{group.meta}</small>
+                      </span>
+                      <MapPin size={14} />
+                    </div>
+                  )}
 
                   <ol>
-                    {countryVisits.map((visit, index) => (
+                    {group.visits.map((visit, index) => (
                       <li key={visit.visitId}>
                         <button
                           type="button"
@@ -1451,10 +1632,10 @@ export default function AtlasExplorer() {
           <button
             type="button"
             className="atlas-v2-next-button"
-            disabled={visits.length === 0}
+            disabled={scopeVisits.length === 0}
             onClick={openAlmanac}
           >
-            生成我的晃悠地图
+            {scope === "china" ? "生成中国打卡地图" : "生成世界打卡地图"}
             <ArrowRight size={17} />
           </button>
         </div>
@@ -1543,17 +1724,23 @@ export default function AtlasExplorer() {
               <div>
                 <span>
                   <Sparkles size={14} />
-                  WANDER TITLE ARCHIVE
+                  {scope === "china"
+                    ? "CHINA ACHIEVEMENTS"
+                    : "WORLD ACHIEVEMENTS"}
                 </span>
-                <h2 id="roaming-title-library-heading">我的晃悠称号册</h2>
+                <h2 id="roaming-title-library-heading">
+                  {scope === "china" ? "中国成就册" : "全球成就册"}
+                </h2>
                 <p>
-                  一个主称号，多个旅行侧面。已解锁称号都可以自己选作主称号。
+                  {scope === "china"
+                    ? "按省级足迹解锁中国成就，并单独选择中国主成就。"
+                    : "按全球足迹解锁成就，并单独选择全球主成就。"}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setTitleLibraryOpen(false)}
-                aria-label="关闭晃悠称号册"
+                aria-label={`关闭${scope === "china" ? "中国" : "全球"}成就册`}
               >
                 <X size={18} />
               </button>
@@ -1567,7 +1754,7 @@ export default function AtlasExplorer() {
               </span>
               <div>
                 <small>
-                  {selectedTitle ? "你选择的主称号" : "系统推荐主称号"}
+                  {selectedTitle ? "你选择的主成就" : "系统推荐主成就"}
                 </small>
                 <strong>{roamingBadge.title}</strong>
                 <p>{roamingBadge.description}</p>
@@ -1576,26 +1763,28 @@ export default function AtlasExplorer() {
                 <strong>{String(unlockedTitles.length).padStart(2, "0")}</strong>
                 <span>
                   已解锁
-                  <small>共 {ROAMING_TITLES.length} 枚</small>
+                  <small>共 {scopeTitles.length} 枚</small>
                 </span>
               </div>
             </div>
 
             <nav
               className="atlas-v2-title-categories"
-              aria-label="称号分类"
+              aria-label="成就分类"
             >
-              <button
-                type="button"
-                className={activeTitleCategory === "all" ? "is-active" : ""}
-                aria-pressed={activeTitleCategory === "all"}
-                onClick={() => setActiveTitleCategory("all")}
-              >
-                全部
-                <b>{ROAMING_TITLES.length}</b>
-              </button>
-              {ROAMING_TITLE_CATEGORIES.map((category) => {
-                const categoryTitles = evaluatedTitles.filter(
+              {scope === "world" ? (
+                <button
+                  type="button"
+                  className={activeTitleCategory === "all" ? "is-active" : ""}
+                  aria-pressed={activeTitleCategory === "all"}
+                  onClick={() => setActiveTitleCategory("all")}
+                >
+                  全部
+                  <b>{scopeTitles.length}</b>
+                </button>
+              ) : null}
+              {availableTitleCategories.map((category) => {
+                const categoryTitles = scopeTitles.filter(
                   (title) => title.category === category.id,
                 );
                 const unlockedCount = categoryTitles.filter(
@@ -1648,7 +1837,7 @@ export default function AtlasExplorer() {
                         )}
                       </span>
                       <small>{category?.label}</small>
-                      {isPrimary ? <b>主称号</b> : null}
+                      {isPrimary ? <b>主成就</b> : null}
                     </div>
                     <strong>{title.title}</strong>
                     <p>{title.description}</p>
@@ -1660,16 +1849,16 @@ export default function AtlasExplorer() {
                           choosePrimaryTitle(title.id, title.title)
                         }
                       >
-                        {isPrimary ? (
-                          <>
-                            <Check size={13} />
-                            当前主称号
-                          </>
-                        ) : (
-                          <>
-                            <Star size={13} />
-                            设为主称号
-                          </>
+                      {isPrimary ? (
+                        <>
+                          <Check size={13} />
+                          当前主成就
+                        </>
+                      ) : (
+                        <>
+                          <Star size={13} />
+                          设为主成就
+                        </>
                         )}
                       </button>
                     ) : (
@@ -1692,9 +1881,11 @@ export default function AtlasExplorer() {
             <footer className="atlas-v2-title-dialog-footer">
               <span>
                 <BookOpen size={13} />
-                称号会随足迹自动解锁，不做全球排名。
+                {scope === "china"
+                  ? "中国成就随省级足迹自动解锁。"
+                  : "全球成就随足迹自动解锁，不做排名。"}
               </span>
-              <span>专属小图标将在下一阶段统一设计。</span>
+              <span>两个维度的主成就互不覆盖。</span>
             </footer>
           </section>
         </div>
@@ -1702,8 +1893,9 @@ export default function AtlasExplorer() {
 
       {almanacOpen ? (
         <WanderAlmanac
-          visits={visits}
-          countryMetrics={countryMetrics}
+          dimension={scope}
+          visits={scopeVisits}
+          countryMetrics={scopeCountryMetrics}
           countryRegions={countryRegions}
           primaryTitle={roamingBadge}
           unlockedTitles={unlockedTitles}

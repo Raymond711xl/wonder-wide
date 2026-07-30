@@ -25,6 +25,7 @@ import {
 } from "./roaming-titles";
 
 type WanderAlmanacProps = {
+  dimension: AlmanacDimension;
   visits: CityVisit[];
   countryMetrics: CountryMetric[];
   countryRegions: CountryRegionMap;
@@ -85,7 +86,7 @@ type ChinaSubdivisionCollection = {
   }>;
 };
 
-type AlmanacDimension = "world" | "china";
+export type AlmanacDimension = "world" | "china";
 
 const POSTER_WIDTH = 1080;
 const POSTER_HEIGHT = 1200;
@@ -755,6 +756,7 @@ function MosaicChinaMap({
 }
 
 export default function WanderAlmanac({
+  dimension,
   visits,
   countryMetrics,
   countryRegions,
@@ -764,7 +766,6 @@ export default function WanderAlmanac({
   onNotice,
 }: WanderAlmanacProps) {
   const posterRef = useRef<HTMLElement | null>(null);
-  const [dimension, setDimension] = useState<AlmanacDimension>("world");
   const [previewScale, setPreviewScale] = useState(1);
   const [mapReady, setMapReady] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -902,8 +903,8 @@ export default function WanderAlmanac({
         ];
   const shareText =
     dimension === "china"
-      ? `我的「${activeTitle.title}」中国晃悠地图：${chinaProvinceNames.length} 个省级区域 · ${chinaCities.size} 座城市 · ${chinaLandmarks.size} 个景点。这地球，我晃过。`
-      : `我的「${primaryTitle.title}」晃悠地图：${stats.continents} 洲 · ${stats.countries} 国 · ${stats.cities} 城 · ${stats.landmarks} 个景点。这地球，我晃过。`;
+      ? `我的「${activeTitle.title}」中国打卡地图：${chinaProvinceNames.length} 个省级区域 · ${chinaCities.size} 座城市 · ${chinaLandmarks.size} 个景点。大江南北，我晃过。`
+      : `我的「${primaryTitle.title}」世界打卡地图：${stats.continents} 洲 · ${stats.countries} 国 · ${stats.cities} 城 · ${stats.landmarks} 个景点。这地球，我晃过。`;
 
   useEffect(() => {
     const updateScale = () => {
@@ -945,14 +946,6 @@ export default function WanderAlmanac({
     }, 2200);
   }
 
-  function selectDimension(nextDimension: AlmanacDimension) {
-    if (nextDimension === dimension || exporting) return;
-    setMapReady(false);
-    setCopied(false);
-    setFeedback("");
-    setDimension(nextDimension);
-  }
-
   async function copyShareText() {
     try {
       await navigator.clipboard.writeText(shareText);
@@ -990,14 +983,12 @@ export default function WanderAlmanac({
       if (!blob) throw new Error("Poster rendering returned no image");
       const objectUrl = URL.createObjectURL(blob);
       const link = document.createElement("a");
-      link.download = `我的晃悠地图${
-        dimension === "china" ? "-中国" : ""
-      }-${yearRange.replace("—", "-")}.png`;
+      link.download = `我的${dimension === "china" ? "中国" : "世界"}打卡地图-${yearRange.replace("—", "-")}.png`;
       link.href = objectUrl;
       link.click();
       window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
-      showFeedback("晃悠地图已生成");
-      onNotice("晃悠地图已生成");
+      showFeedback(`${dimension === "china" ? "中国" : "世界"}打卡地图已生成`);
+      onNotice(`${dimension === "china" ? "中国" : "世界"}打卡地图已生成`);
     } catch {
       showFeedback("图片生成失败，请稍后重试");
       onNotice("图片生成失败，请稍后重试");
@@ -1009,6 +1000,7 @@ export default function WanderAlmanac({
   return (
     <div
       className="wander-almanac-overlay"
+      data-dimension={dimension}
       role="dialog"
       aria-modal="true"
       aria-labelledby="wander-almanac-preview-title"
@@ -1020,30 +1012,15 @@ export default function WanderAlmanac({
         </button>
         <div>
           <small>SECOND DRAFT · 短版海报</small>
-          <strong id="wander-almanac-preview-title">我的晃悠地图</strong>
-          <nav
-            className="wander-almanac-dimension-switch"
-            aria-label="地图生成维度"
+          <strong id="wander-almanac-preview-title">
+            我的{dimension === "china" ? "中国" : "世界"}打卡地图
+          </strong>
+          <span
+            className={`wander-almanac-dimension-label is-${dimension}`}
+            aria-label={`当前生成${dimension === "china" ? "中国" : "世界"}内容`}
           >
-            <button
-              type="button"
-              className={dimension === "world" ? "is-active" : ""}
-              aria-pressed={dimension === "world"}
-              disabled={exporting}
-              onClick={() => selectDimension("world")}
-            >
-              全球
-            </button>
-            <button
-              type="button"
-              className={dimension === "china" ? "is-active" : ""}
-              aria-pressed={dimension === "china"}
-              disabled={exporting}
-              onClick={() => selectDimension("china")}
-            >
-              中国
-            </button>
-          </nav>
+            {dimension === "china" ? "中国维度" : "全球维度"}
+          </span>
         </div>
         <span className="wander-almanac-toolbar-actions">
           {feedback ? (
@@ -1079,19 +1056,26 @@ export default function WanderAlmanac({
                 <Globe2 size={20} />
                 WANDER WIDE
               </span>
-              <span>MY MAP · {yearRange}</span>
+              <span>
+                {dimension === "china" ? "MY CHINA MAP" : "MY WORLD MAP"} ·{" "}
+                {yearRange}
+              </span>
             </header>
 
             <section className="wander-almanac-hero">
-              <h1>这地球，我晃过。</h1>
+              <h1>
+                {dimension === "china"
+                  ? "大江南北，我晃过。"
+                  : "这地球，我晃过。"}
+              </h1>
 
               {activeTitles.length ? (
                 <div
                   className="wander-almanac-title-strip"
-                  aria-label="我的晃悠称号"
+                  aria-label="我的成就"
                 >
                   <header>
-                    <span>我的晃悠称号</span>
+                    <span>我的成就</span>
                     <b>
                       {dimension === "china" ? "中国" : "地球"}点亮{" "}
                       {activeCoverage}
@@ -1124,8 +1108,16 @@ export default function WanderAlmanac({
             <section className="wander-almanac-map-section">
               <header>
                 <div>
-                  <small>MY PIXEL WORLD</small>
-                  <h2>我点亮的世界。</h2>
+                  <small>
+                    {dimension === "china"
+                      ? "MY PIXEL CHINA"
+                      : "MY PIXEL WORLD"}
+                  </small>
+                  <h2>
+                    {dimension === "china"
+                      ? "我点亮的中国。"
+                      : "我点亮的世界。"}
+                  </h2>
                 </div>
                 <span>
                   <i />

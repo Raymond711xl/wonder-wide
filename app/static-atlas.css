@@ -3318,3 +3318,223 @@
     gap: 3px;
   }
 }
+
+/* Page-level world / China dimensions */
+.atlas-v2-scope-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid rgba(33, 20, 63, 0.24);
+  border-radius: 999px;
+  background: rgba(255, 253, 246, 0.72);
+}
+
+.atlas-v2-scope-tabs button {
+  min-width: 52px;
+  min-height: 30px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--ink-soft);
+  background: transparent;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 900;
+  transition:
+    color 140ms ease,
+    background-color 140ms ease,
+    transform 140ms ease;
+}
+
+.atlas-v2-scope-tabs button:hover {
+  color: var(--ink);
+  transform: translateY(-1px);
+}
+
+.atlas-v2-scope-tabs button.is-active {
+  color: var(--ink);
+  background: var(--lime);
+}
+
+.atlas-v2-shell[data-scope="china"] .atlas-v2-header {
+  background:
+    linear-gradient(100deg, rgba(196, 54, 49, 0.14), transparent 68%),
+    rgba(255, 243, 215, 0.97);
+}
+
+.atlas-v2-shell[data-scope="china"] .atlas-v2-brand-mark {
+  color: #fffdf6;
+  background: #c83f3a;
+  box-shadow: 4px 4px 0 #f4c46a;
+}
+
+.atlas-v2-shell[data-scope="china"]
+  .atlas-v2-scope-tabs
+  button.is-active {
+  color: #fffdf6;
+  background: #c83f3a;
+}
+
+.atlas-v2-shell[data-scope="china"] .atlas-v2-panel {
+  background:
+    radial-gradient(circle at 8% 8%, rgba(200, 63, 58, 0.12), transparent 28%),
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 27px,
+      rgba(33, 20, 63, 0.045) 28px
+    ),
+    rgba(255, 243, 215, 0.98);
+}
+
+.atlas-v2-panel-intro {
+  min-height: 72px;
+  display: grid;
+  align-content: center;
+  gap: 7px;
+  padding: 13px 20px 12px;
+}
+
+.atlas-v2-panel-intro h1 {
+  margin: 0;
+}
+
+.atlas-v2-eyebrow {
+  width: max-content;
+  padding: 3px 7px;
+  border: 1px solid rgba(33, 20, 63, 0.2);
+  border-radius: 999px;
+  color: var(--ink) !important;
+  background: rgba(216, 255, 86, 0.7);
+  font-size: 8px !important;
+  letter-spacing: 0.08em;
+}
+
+.atlas-v2-shell[data-scope="china"] .atlas-v2-panel-intro {
+  border-left: 5px solid #c83f3a;
+  background:
+    linear-gradient(110deg, rgba(200, 63, 58, 0.18), transparent 56%),
+    rgba(255, 253, 246, 0.2);
+}
+
+.atlas-v2-shell[data-scope="china"] .atlas-v2-eyebrow {
+  color: #fffdf6 !important;
+  border-color: #a82f2b;
+  background: #c83f3a;
+}
+
+.atlas-v2-stats-section {
+  display: grid;
+  margin-top: 8px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.atlas-v2-section-kicker {
+  padding: 7px 17px 0;
+  color: var(--ink-soft);
+  font-size: var(--atlas-type-aux) !important;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.atlas-v2-stats-section .atlas-v2-stats {
+  margin-top: 0;
+  border-bottom: 0;
+}
+
+.atlas-v2-country-group-head.is-static {
+  cursor: default;
+}
+
+.atlas-v2-country-group-head.is-static:hover {
+  background: transparent;
+}
+
+.atlas-v2-shell[data-scope="china"] .atlas-v2-roaming-badge {
+  background:
+    linear-gradient(145deg, rgba(255, 253, 246, 0.55), transparent 58%),
+    #f3b7a8;
+  box-shadow: 3px 3px 0 #c83f3a;
+}
+
+.atlas-v2-shell[data-scope="china"]
+  .atlas-v2-roaming-badge-icon,
+.atlas-v2-shell[data-scope="china"] .atlas-v2-country-emblem {
+  color: #fffdf6;
+  background: #a82f2b;
+}
+
+.atlas-v2-shell[data-scope="china"] .atlas-v2-roaming-progress > strong,
+.atlas-v2-shell[data-scope="china"] .atlas-v2-visit-index,
+.atlas-v2-shell[data-scope="china"] .atlas-v2-section-title button {
+  color: #b33430;
+}
+
+.atlas-v2-shell[data-scope="china"] .atlas-v2-country-group.heat-1 .atlas-v2-heat-swatch {
+  background: #efaa91;
+}
+
+.atlas-v2-shell[data-scope="china"] .atlas-v2-country-group.heat-2 .atlas-v2-heat-swatch {
+  background: #df715f;
+}
+
+.atlas-v2-shell[data-scope="china"] .atlas-v2-country-group.heat-3 .atlas-v2-heat-swatch {
+  background: #bd433d;
+}
+
+.atlas-v2-shell[data-scope="china"] .atlas-v2-country-group.heat-4 .atlas-v2-heat-swatch {
+  background: #7f2725;
+}
+
+.atlas-v2-shell[data-scope="china"] .atlas-v2-next-button {
+  background: #a82f2b;
+  box-shadow: 4px 4px 0 #f4c46a;
+}
+
+.atlas-v2-shell[data-scope="china"] .atlas-v2-next-button:hover {
+  background: #8f2825;
+}
+
+@media (max-width: 880px) {
+  .atlas-v2-header {
+    gap: 8px;
+  }
+
+  .atlas-v2-scope-tabs {
+    margin-left: auto;
+  }
+
+  .atlas-v2-scope-tabs button {
+    min-width: 42px;
+    min-height: 28px;
+    padding: 0 8px;
+    font-size: 9px;
+  }
+
+  .atlas-v2-panel-intro {
+    min-height: 62px;
+    padding: 9px 14px 8px;
+  }
+
+  .atlas-v2-panel-intro h1 {
+    margin: 0;
+  }
+
+  .atlas-v2-section-kicker {
+    padding-right: 14px;
+    padding-left: 14px;
+  }
+}
+
+@media (max-width: 420px) {
+  .atlas-v2-brand-copy small {
+    display: none;
+  }
+
+  .atlas-v2-scope-tabs button {
+    min-width: 39px;
+    padding: 0 6px;
+  }
+}
