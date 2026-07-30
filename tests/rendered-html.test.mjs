@@ -60,7 +60,7 @@ test("renders the Wander Wide experience", async () => {
     html,
     /WORLD COVERAGE|COUNTRIES|CITIES|MY ROAMS|DONENESS|WELL-DONE/,
   );
-  assert.match(html, /https:\/\/atlas\.example\/og-wander-wide\.png/);
+  assert.doesNotMatch(html, /og-wander-wide\.png/);
   assert.doesNotMatch(
     html,
     /足迹积分|中华民国|国家层|城市层|地图选城市|远迹/,
@@ -366,6 +366,7 @@ test("keeps the two-level static atlas as a client boundary", async () => {
   assert.doesNotMatch(explorer, /maplibre/i);
   assert.doesNotMatch(staticMap, /maplibre|ArcGIS|tile\.openstreetmap/i);
   assert.match(layout, /generateMetadata/);
+  assert.doesNotMatch(layout, /og-wander-wide/);
   assert.match(layout, /wander-almanac\.css/);
   assert.doesNotMatch(layout, /maplibre/i);
   assert.match(packageJson, /"name": "footprint-atlas"/);

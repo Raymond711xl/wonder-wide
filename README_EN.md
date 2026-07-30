@@ -2,8 +2,6 @@
 
 [中文](README.md) | English
 
-![Wander Wide](public/og-wander-wide.png)
-
 A no-login personal travel-footprint tool for keeping countries, cities, and landmarks on an explorable map, tracking progress, and generating shareable posters.
 
 > The hosted demo is not public yet. Once the repository is published, anyone can run the project on their own computer.
