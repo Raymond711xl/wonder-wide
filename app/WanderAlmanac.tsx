@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   Award,
   Check,
+  ChevronDown,
   Download,
   Globe2,
   Share2,
@@ -31,6 +32,8 @@ type WanderAlmanacProps = {
   countryRegions: CountryRegionMap;
   primaryTitle: EvaluatedRoamingTitle;
   unlockedTitles: EvaluatedRoamingTitle[];
+  selectedTitles: EvaluatedRoamingTitle[];
+  onToggleTitle: (titleId: string, title: string) => void;
   onClose: () => void;
   onNotice: (message: string) => void;
 };
@@ -105,6 +108,10 @@ const CHINA_MAP_MIN_LONGITUDE = 72;
 const CHINA_MAP_MAX_LONGITUDE = 136;
 const CHINA_MAP_MIN_LATITUDE = 17;
 const CHINA_MAP_MAX_LATITUDE = 54;
+const CHINA_MAP_CONTENT_WIDTH = 645;
+const CHINA_MAP_CONTENT_HEIGHT = 420;
+const CHINA_MAP_OFFSET_X = (MAP_WIDTH - CHINA_MAP_CONTENT_WIDTH) / 2;
+const CHINA_MAP_OFFSET_Y = (MAP_HEIGHT - CHINA_MAP_CONTENT_HEIGHT) / 2;
 
 function cityKey(visit: Pick<CityVisit, "countryCode" | "name">) {
   return `${visit.countryCode}:${visit.name.trim().toLowerCase()}`;
@@ -653,8 +660,8 @@ function MosaicChinaMap({
     };
   }, [onReady, visits]);
 
-  const tileWidth = MAP_WIDTH / CHINA_MAP_COLUMNS;
-  const tileHeight = MAP_HEIGHT / CHINA_MAP_ROWS;
+  const tileWidth = CHINA_MAP_CONTENT_WIDTH / CHINA_MAP_COLUMNS;
+  const tileHeight = CHINA_MAP_CONTENT_HEIGHT / CHINA_MAP_ROWS;
 
   return (
     <div className="wander-almanac-map wander-almanac-china-map">
@@ -693,10 +700,10 @@ function MosaicChinaMap({
           {tiles.map((tile) => (
             <rect
               key={tile.key}
-              x={tile.column * tileWidth + 1.25}
-              y={tile.row * tileHeight + 1.25}
-              width={tileWidth - 2.5}
-              height={tileHeight - 2.5}
+              x={CHINA_MAP_OFFSET_X + tile.column * tileWidth + 1.1}
+              y={CHINA_MAP_OFFSET_Y + tile.row * tileHeight + 1.1}
+              width={tileWidth - 2.2}
+              height={tileHeight - 2.2}
               rx="2.2"
               fill={tileColor(tile.heatLevel)}
               opacity={
@@ -715,8 +722,12 @@ function MosaicChinaMap({
           {cityPins.map((pin, index) => (
             <g
               key={pin.key}
-              transform={`translate(${pin.column * tileWidth + tileWidth / 2} ${
-                pin.row * tileHeight + tileHeight / 2
+              transform={`translate(${
+                CHINA_MAP_OFFSET_X +
+                pin.column * tileWidth +
+                tileWidth / 2
+              } ${
+                CHINA_MAP_OFFSET_Y + pin.row * tileHeight + tileHeight / 2
               })`}
             >
               <rect
@@ -762,6 +773,8 @@ export default function WanderAlmanac({
   countryRegions,
   primaryTitle,
   unlockedTitles,
+  selectedTitles,
+  onToggleTitle,
   onClose,
   onNotice,
 }: WanderAlmanacProps) {
@@ -771,6 +784,7 @@ export default function WanderAlmanac({
   const [exporting, setExporting] = useState(false);
   const [copied, setCopied] = useState(false);
   const [feedback, setFeedback] = useState("");
+  const [achievementPickerOpen, setAchievementPickerOpen] = useState(false);
 
   const chinaVisits = useMemo(
     () => visits.filter((visit) => visit.countryCode === "CN"),
@@ -807,10 +821,16 @@ export default function WanderAlmanac({
   const yearRange = useMemo(() => {
     const years = [
       ...new Set(
-        visits.map((visit) => visit.visitedOn.slice(0, 4)).filter(Boolean),
+        visits
+          .map((visit) =>
+            /^\d{4}-\d{2}-\d{2}$/u.test(visit.visitedOn)
+              ? visit.visitedOn.slice(0, 4)
+              : "",
+          )
+          .filter(Boolean),
       ),
     ].sort();
-    if (years.length <= 1) return years[0] ?? "NOW";
+    if (years.length <= 1) return years[0] ?? "";
     return `${years[0]}—${years[years.length - 1]}`;
   }, [visits]);
 
@@ -820,39 +840,32 @@ export default function WanderAlmanac({
     cities: uniqueCities.size,
     landmarks: uniqueLandmarks.size,
   };
-  const featuredTitles = useMemo(() => {
-    const primary = unlockedTitles.find(
-      (title) => title.id === primaryTitle.id,
+  const activeTitles = useMemo(() => {
+    const selectedById = new Map(
+      selectedTitles.map((title) => [title.id, title]),
     );
-    const remaining = [...unlockedTitles]
-      .filter((title) => title.id !== primary?.id)
-      .sort(
+    const primary =
+      selectedById.get(primaryTitle.id) ??
+      unlockedTitles.find((title) => title.id === primaryTitle.id) ??
+      primaryTitle;
+    return [
+      primary,
+      ...selectedTitles.filter((title) => title.id !== primary.id),
+    ].slice(0, 5);
+  }, [primaryTitle, selectedTitles, unlockedTitles]);
+  const pickerTitles = useMemo(
+    () =>
+      [...unlockedTitles].sort(
         (left, right) =>
+          Number(
+            activeTitles.some((title) => title.id === right.id),
+          ) -
+            Number(activeTitles.some((title) => title.id === left.id)) ||
           right.priority - left.priority ||
-          right.title.localeCompare(left.title),
-      );
-    return [...(primary ? [primary] : []), ...remaining].slice(0, 3);
-  }, [primaryTitle.id, unlockedTitles]);
-  const chinaFeaturedTitles = useMemo(() => {
-    const unlockedChinaTitles = [...unlockedTitles]
-      .filter((title) => title.category === "china")
-      .sort(
-        (left, right) =>
-          right.priority - left.priority ||
-          right.title.localeCompare(left.title),
-      );
-    const chosenChinaTitle =
-      primaryTitle.category === "china"
-        ? unlockedChinaTitles.find((title) => title.id === primaryTitle.id)
-        : unlockedChinaTitles[0];
-    const selected = [
-      ...(chosenChinaTitle ? [chosenChinaTitle] : []),
-      ...unlockedChinaTitles.filter(
-        (title) => title.id !== chosenChinaTitle?.id,
+          left.title.localeCompare(right.title, "zh-CN"),
       ),
-    ].slice(0, 3);
-    return selected.length ? selected : featuredTitles;
-  }, [featuredTitles, primaryTitle.category, primaryTitle.id, unlockedTitles]);
+    [activeTitles, unlockedTitles],
+  );
   const chinaProvinceNames = useMemo(
     () =>
       [
@@ -882,8 +895,6 @@ export default function WanderAlmanac({
     (chinaProvinceNames.length / CHINA_PROVINCE_TOTAL) * 100,
   );
   const countryNames = countryMetrics.map((metric) => metric.name).join(" · ");
-  const activeTitles =
-    dimension === "china" ? chinaFeaturedTitles : featuredTitles;
   const activeTitle = activeTitles[0] ?? primaryTitle;
   const activeCoverage =
     dimension === "china" ? chinaCoverage : worldCoverage;
@@ -904,7 +915,7 @@ export default function WanderAlmanac({
   const shareText =
     dimension === "china"
       ? `我的「${activeTitle.title}」中国打卡地图：${chinaProvinceNames.length} 个省级区域 · ${chinaCities.size} 座城市 · ${chinaLandmarks.size} 个景点。大江南北，我晃过。`
-      : `我的「${primaryTitle.title}」世界打卡地图：${stats.continents} 洲 · ${stats.countries} 国 · ${stats.cities} 城 · ${stats.landmarks} 个景点。这地球，我晃过。`;
+      : `我的「${activeTitle.title}」世界打卡地图：${stats.continents} 洲 · ${stats.countries} 国 · ${stats.cities} 城 · ${stats.landmarks} 个景点。这地球，我晃过。`;
 
   useEffect(() => {
     const updateScale = () => {
@@ -983,7 +994,8 @@ export default function WanderAlmanac({
       if (!blob) throw new Error("Poster rendering returned no image");
       const objectUrl = URL.createObjectURL(blob);
       const link = document.createElement("a");
-      link.download = `我的${dimension === "china" ? "中国" : "世界"}打卡地图-${yearRange.replace("—", "-")}.png`;
+      const yearSuffix = yearRange ? `-${yearRange.replace("—", "-")}` : "";
+      link.download = `我的${dimension === "china" ? "中国" : "世界"}打卡地图${yearSuffix}.png`;
       link.href = objectUrl;
       link.click();
       window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
@@ -1022,13 +1034,69 @@ export default function WanderAlmanac({
             {dimension === "china" ? "中国维度" : "全球维度"}
           </span>
         </div>
-        <span className="wander-almanac-toolbar-actions">
+        <div className="wander-almanac-toolbar-actions">
           {feedback ? (
             <span className="wander-almanac-toolbar-feedback" role="status">
               <Check size={14} />
               {feedback}
             </span>
           ) : null}
+          <div className="wander-almanac-achievement-menu">
+            <button
+              type="button"
+              aria-expanded={achievementPickerOpen}
+              onClick={() => setAchievementPickerOpen((current) => !current)}
+            >
+              <Award size={16} />
+              成就 {activeTitles.length}/5
+              <ChevronDown
+                size={14}
+                className={achievementPickerOpen ? "is-open" : ""}
+              />
+            </button>
+            {achievementPickerOpen ? (
+              <div
+                className="wander-almanac-achievement-picker"
+                role="dialog"
+                aria-label="选择海报展示成就"
+              >
+                <header>
+                  <strong>选择海报成就</strong>
+                  <small>主成就固定第一，最多展示 5 枚</small>
+                </header>
+                <div>
+                  {pickerTitles.map((title) => {
+                    const isPrimary = title.id === primaryTitle.id;
+                    const isSelected = activeTitles.some(
+                      (item) => item.id === title.id,
+                    );
+                    return (
+                      <button
+                        type="button"
+                        key={title.id}
+                        className={[
+                          `tone-${title.tone}`,
+                          isSelected ? "is-selected" : "",
+                          isPrimary ? "is-primary-title" : "",
+                        ]
+                          .filter(Boolean)
+                          .join(" ")}
+                        aria-pressed={isSelected}
+                        disabled={isPrimary}
+                        onClick={() => onToggleTitle(title.id, title.title)}
+                      >
+                        <span>
+                          <strong>{title.title}</strong>
+                          <small>{isPrimary ? "主成就 · 固定展示" : title.description}</small>
+                        </span>
+                        {isSelected ? <Check size={15} /> : <Award size={15} />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+          </div>
           <button type="button" onClick={copyShareText}>
             {copied ? <Check size={16} /> : <Share2 size={16} />}
             {copied ? "已复制" : "复制文案"}
@@ -1042,7 +1110,7 @@ export default function WanderAlmanac({
             {exporting ? <Sparkles size={16} /> : <Download size={16} />}
             {exporting ? "正在生成" : "保存图片"}
           </button>
-        </span>
+        </div>
       </header>
 
       <main className="wander-almanac-preview">
@@ -1057,8 +1125,8 @@ export default function WanderAlmanac({
                 WANDER WIDE
               </span>
               <span>
-                {dimension === "china" ? "MY CHINA MAP" : "MY WORLD MAP"} ·{" "}
-                {yearRange}
+                {dimension === "china" ? "MY CHINA MAP" : "MY WORLD MAP"}
+                {yearRange ? ` · ${yearRange}` : ""}
               </span>
             </header>
 

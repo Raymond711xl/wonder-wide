@@ -563,3 +563,177 @@
     font-size: 8px;
   }
 }
+
+/* Achievement selection and readable preview controls */
+.wander-almanac-toolbar > div small,
+.wander-almanac-dimension-label,
+.wander-almanac-toolbar-feedback {
+  font-size: 12px;
+}
+
+.wander-almanac-toolbar > button,
+.wander-almanac-toolbar-actions > button,
+.wander-almanac-achievement-menu > button {
+  font-size: 14px;
+}
+
+.wander-almanac-achievement-menu {
+  position: relative;
+}
+
+.wander-almanac-achievement-menu > button svg:last-child {
+  transition: transform 150ms ease;
+}
+
+.wander-almanac-achievement-menu > button svg:last-child.is-open {
+  transform: rotate(180deg);
+}
+
+.wander-almanac-achievement-picker {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + 12px);
+  right: 0;
+  width: min(390px, calc(100vw - 24px));
+  overflow: hidden;
+  color: #21143f;
+  border: 1.5px solid #21143f;
+  border-radius: 18px;
+  background: #fffaf0;
+  box-shadow:
+    6px 6px 0 #ff4f78,
+    0 24px 70px rgba(0, 0, 0, 0.28);
+}
+
+.wander-almanac-achievement-picker > header {
+  display: grid;
+  gap: 2px;
+  padding: 13px 14px 11px;
+  border-bottom: 1px solid rgba(33, 20, 63, 0.16);
+  background: #f7f0da;
+}
+
+.wander-almanac-achievement-picker > header strong {
+  font-size: 16px;
+}
+
+.wander-almanac-achievement-picker > header small {
+  color: #746a7e;
+  font-size: 12px;
+}
+
+.wander-almanac-achievement-picker > div {
+  display: grid;
+  gap: 7px;
+  max-height: min(420px, calc(100vh - 150px));
+  overflow-y: auto;
+  padding: 10px;
+}
+
+.wander-almanac-toolbar-actions
+  .wander-almanac-achievement-picker
+  button {
+  --picker-accent: #d8ff56;
+  width: 100%;
+  min-height: 54px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  color: #21143f;
+  border: 1px solid rgba(33, 20, 63, 0.22);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: none;
+  text-align: left;
+}
+
+.wander-almanac-toolbar-actions
+  .wander-almanac-achievement-picker
+  button:hover:not(:disabled) {
+  transform: none;
+  border-color: #21143f;
+  background: color-mix(in srgb, var(--picker-accent) 46%, white);
+}
+
+.wander-almanac-toolbar-actions
+  .wander-almanac-achievement-picker
+  button.is-selected {
+  border-color: #21143f;
+  background: var(--picker-accent);
+}
+
+.wander-almanac-toolbar-actions
+  .wander-almanac-achievement-picker
+  button:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.wander-almanac-achievement-picker button > span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.wander-almanac-achievement-picker button strong {
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wander-almanac-achievement-picker button small {
+  overflow: hidden;
+  color: #746a7e;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wander-almanac-achievement-picker button.tone-ocean {
+  --picker-accent: #8edee0;
+}
+
+.wander-almanac-achievement-picker button.tone-pink {
+  --picker-accent: #ff9fbd;
+}
+
+.wander-almanac-achievement-picker button.tone-purple {
+  --picker-accent: #c9b9ff;
+}
+
+.wander-almanac-achievement-picker button.tone-orange {
+  --picker-accent: #ffc082;
+}
+
+.wander-almanac-achievement-picker button.tone-lime {
+  --picker-accent: #d8ff56;
+}
+
+.wander-almanac-title-chip strong {
+  font-size: 30px;
+}
+
+@media (max-width: 720px) {
+  .wander-almanac-toolbar-actions {
+    grid-template-columns: 1fr 1fr 1.18fr;
+  }
+
+  .wander-almanac-toolbar > button,
+  .wander-almanac-toolbar-actions > button,
+  .wander-almanac-achievement-menu > button {
+    min-height: 38px;
+    padding: 0 8px;
+    font-size: 12px;
+  }
+
+  .wander-almanac-achievement-picker {
+    position: fixed;
+    top: 132px;
+    right: 8px;
+    left: 8px;
+    width: auto;
+  }
+}

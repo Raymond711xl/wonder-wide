@@ -57,6 +57,7 @@ import {
 import {
   COUNTRY_REGION_FALLBACKS,
   evaluateRoamingTitles,
+  isChinaRoamingTitleCategory,
   recommendedRoamingTitle,
   ROAMING_TITLE_CATEGORIES,
   ROAMING_TITLES,
@@ -67,10 +68,13 @@ import {
 const STORAGE_KEY = "footprint-atlas-m1-city-visits";
 const TITLE_STORAGE_KEY = "footprint-atlas-m1-primary-title";
 const SCOPED_TITLE_STORAGE_KEY = "footprint-atlas-m2-primary-titles";
+const SCOPED_FEATURED_TITLE_STORAGE_KEY =
+  "footprint-atlas-m3-featured-titles";
 const EARLIEST_VISIT_YEAR = 1900;
 const WORLD_COUNTRY_TOTAL = 173;
 const CHINA_PROVINCE_TOTAL = 34;
 const LANDMARK_RECOMMENDATION_LIMIT = 12;
+const MAX_FEATURED_TITLES = 5;
 const VALID_TRAVEL_TYPES = new Set<TravelType>(
   TRAVEL_TYPE_OPTIONS.map((option) => option.value),
 );
@@ -107,6 +111,7 @@ type OverpassElement = {
 type AtlasScope = "world" | "china";
 
 type ScopedTitleIds = Record<AtlasScope, string | null>;
+type ScopedFeaturedTitleIds = Record<AtlasScope, string[]>;
 
 type VisitGroup = {
   id: string;
@@ -506,6 +511,8 @@ function migrateVisits(value: unknown): CityVisit[] {
         country,
         region,
         subtitle: formatLocationSubtitle(region, country),
+        visitedOn:
+          typeof stored.visitedOn === "string" ? stored.visitedOn : "",
         travelType,
         landmarks: Array.isArray(stored.landmarks) ? stored.landmarks : [],
       },
@@ -553,6 +560,11 @@ export default function AtlasExplorer() {
     world: null,
     china: null,
   });
+  const [featuredTitleIds, setFeaturedTitleIds] =
+    useState<ScopedFeaturedTitleIds>({
+      world: [],
+      china: [],
+    });
 
   const countryMetrics = useMemo(() => buildCountryMetrics(visits), [visits]);
   const evaluatedTitles = useMemo(
@@ -563,8 +575,8 @@ export default function AtlasExplorer() {
     () =>
       evaluatedTitles.filter((title) =>
         scope === "china"
-          ? title.category === "china"
-          : title.category !== "china",
+          ? isChinaRoamingTitleCategory(title.category)
+          : !isChinaRoamingTitleCategory(title.category),
       ),
     [evaluatedTitles, scope],
   );
@@ -585,6 +597,17 @@ export default function AtlasExplorer() {
     [scopeTitles, selectedTitleId],
   );
   const roamingBadge = selectedTitle ?? recommendedTitle ?? scopeTitles[0];
+  const selectedPosterTitles = useMemo(() => {
+    if (!roamingBadge) return [];
+    const titleById = new Map(scopeTitles.map((title) => [title.id, title]));
+    const additional = featuredTitleIds[scope]
+      .map((titleId) => titleById.get(titleId))
+      .filter(
+        (title): title is NonNullable<typeof title> =>
+          Boolean(title?.unlocked && title.id !== roamingBadge.id),
+      );
+    return [roamingBadge, ...additional].slice(0, MAX_FEATURED_TITLES);
+  }, [featuredTitleIds, roamingBadge, scope, scopeTitles]);
   const visibleTitles = useMemo(
     () =>
       scopeTitles
@@ -604,7 +627,9 @@ export default function AtlasExplorer() {
   const availableTitleCategories = useMemo(
     () =>
       ROAMING_TITLE_CATEGORIES.filter((category) =>
-        scope === "china" ? category.id === "china" : category.id !== "china",
+        scope === "china"
+          ? isChinaRoamingTitleCategory(category.id)
+          : !isChinaRoamingTitleCategory(category.id),
       ),
     [scope],
   );
@@ -807,9 +832,9 @@ export default function AtlasExplorer() {
       setCandidate(normalizedCity);
       setEditingVisitId(null);
       setScope(nextScope);
-      setActiveTitleCategory(nextScope === "china" ? "china" : "all");
+      setActiveTitleCategory("all");
       setActiveCountry({ code: city.countryCode, name: country });
-      setVisitDate(todayISO());
+      setVisitDate("");
       setVisitTravelType("旅游");
       setLandmarkOptions(seeded);
       setSelectedLandmarks([]);
@@ -844,7 +869,7 @@ export default function AtlasExplorer() {
       setCandidate(normalizedVisit);
       setEditingVisitId(visit.visitId);
       setScope(nextScope);
-      setActiveTitleCategory(nextScope === "china" ? "china" : "all");
+      setActiveTitleCategory("all");
       setActiveCountry({ code: visit.countryCode, name: country });
       setVisitDate(visit.visitedOn);
       setVisitTravelType(visit.travelType);
@@ -873,6 +898,10 @@ export default function AtlasExplorer() {
   useEffect(() => {
     let savedVisits: CityVisit[] = [];
     let savedTitleIds: ScopedTitleIds = { world: null, china: null };
+    let savedFeaturedTitleIds: ScopedFeaturedTitleIds = {
+      world: [],
+      china: [],
+    };
     try {
       const saved = window.localStorage.getItem(STORAGE_KEY);
       if (saved) savedVisits = migrateVisits(JSON.parse(saved));
@@ -892,9 +921,32 @@ export default function AtlasExplorer() {
         );
         if (legacyTitleId) {
           savedTitleIds[
-            legacyTitle?.category === "china" ? "china" : "world"
+            legacyTitle &&
+            isChinaRoamingTitleCategory(legacyTitle.category)
+              ? "china"
+              : "world"
           ] = legacyTitleId;
         }
+      }
+      const savedFeaturedTitles = window.localStorage.getItem(
+        SCOPED_FEATURED_TITLE_STORAGE_KEY,
+      );
+      if (savedFeaturedTitles) {
+        const parsed = JSON.parse(savedFeaturedTitles) as Partial<
+          Record<AtlasScope, unknown>
+        >;
+        savedFeaturedTitleIds = {
+          world: Array.isArray(parsed.world)
+            ? parsed.world
+                .filter((id): id is string => typeof id === "string")
+                .slice(0, MAX_FEATURED_TITLES)
+            : [],
+          china: Array.isArray(parsed.china)
+            ? parsed.china
+                .filter((id): id is string => typeof id === "string")
+                .slice(0, MAX_FEATURED_TITLES)
+            : [],
+        };
       }
     } catch {
       // Device-local history is helpful, but the atlas must load without it.
@@ -903,6 +955,7 @@ export default function AtlasExplorer() {
     const hydrationTimer = window.setTimeout(() => {
       setVisits(savedVisits);
       setSelectedTitleIds(savedTitleIds);
+      setFeaturedTitleIds(savedFeaturedTitleIds);
       setHydrated(true);
     }, 0);
     return () => window.clearTimeout(hydrationTimer);
@@ -963,6 +1016,18 @@ export default function AtlasExplorer() {
       // Choosing a title still works for the current session.
     }
   }, [hydrated, selectedTitleIds]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      window.localStorage.setItem(
+        SCOPED_FEATURED_TITLE_STORAGE_KEY,
+        JSON.stringify(featuredTitleIds),
+      );
+    } catch {
+      // Poster title selection remains usable for the current session.
+    }
+  }, [featuredTitleIds, hydrated]);
 
   useEffect(() => {
     if (!titleLibraryOpen) return;
@@ -1125,17 +1190,15 @@ export default function AtlasExplorer() {
 
   function saveCandidateVisit() {
     if (!candidate) return;
-    if (!visitDate) {
-      showToast("请选择到访日期");
-      return;
-    }
-    const duplicate = visits.some(
-      (visit) =>
-        visit.visitId !== editingVisitId &&
-        visit.countryCode === candidate.countryCode &&
-        normalizeCityName(visit.name) === normalizeCityName(candidate.name) &&
-        visit.visitedOn === visitDate,
-    );
+    const duplicate =
+      Boolean(visitDate) &&
+      visits.some(
+        (visit) =>
+          visit.visitId !== editingVisitId &&
+          visit.countryCode === candidate.countryCode &&
+          normalizeCityName(visit.name) === normalizeCityName(candidate.name) &&
+          visit.visitedOn === visitDate,
+      );
     if (duplicate) {
       showToast("这座城市在同一天已经记录过了");
       return;
@@ -1144,7 +1207,8 @@ export default function AtlasExplorer() {
     const visit: CityVisit = {
       ...candidate,
       visitId:
-        editingVisitId ?? `${candidate.id}-${visitDate}-${Date.now()}`,
+        editingVisitId ??
+        `${candidate.id}-${visitDate || "undated"}-${Date.now()}`,
       visitedOn: visitDate,
       travelType: visitTravelType,
       landmarks: selectedLandmarks,
@@ -1178,7 +1242,7 @@ export default function AtlasExplorer() {
     landmarkRecommendationRequest.current += 1;
     setLandmarkRecommendationsLoading(false);
     setScope(nextScope);
-    setActiveTitleCategory(nextScope === "china" ? "china" : "all");
+    setActiveTitleCategory("all");
     setTitleLibraryOpen(false);
     setAlmanacOpen(false);
     setActiveCountry(
@@ -1214,7 +1278,7 @@ export default function AtlasExplorer() {
 
   function openTitleLibrary() {
     closeComposer();
-    setActiveTitleCategory(scope === "china" ? "china" : "all");
+    setActiveTitleCategory("all");
     setTitleLibraryOpen(true);
   }
 
@@ -1228,9 +1292,35 @@ export default function AtlasExplorer() {
 
   function choosePrimaryTitle(titleId: string, title: string) {
     setSelectedTitleIds((current) => ({ ...current, [scope]: titleId }));
+    setFeaturedTitleIds((current) => {
+      const next = [
+        titleId,
+        ...current[scope].filter((id) => id !== titleId),
+      ].slice(0, MAX_FEATURED_TITLES);
+      return { ...current, [scope]: next };
+    });
     showToast(
       `已把「${title}」设为${scope === "china" ? "中国" : "全球"}主成就`,
     );
+  }
+
+  function toggleFeaturedTitle(titleId: string, title: string) {
+    if (roamingBadge?.id === titleId) {
+      showToast("主成就会固定展示在海报第一枚");
+      return;
+    }
+    const isSelected = featuredTitleIds[scope].includes(titleId);
+    if (!isSelected && selectedPosterTitles.length >= MAX_FEATURED_TITLES) {
+      showToast(`海报最多展示 ${MAX_FEATURED_TITLES} 枚成就`);
+      return;
+    }
+    setFeaturedTitleIds((current) => ({
+      ...current,
+      [scope]: isSelected
+        ? current[scope].filter((id) => id !== titleId)
+        : [...current[scope], titleId],
+    }));
+    showToast(isSelected ? `已从海报移除「${title}」` : `已把「${title}」加入海报`);
   }
 
   return (
@@ -1582,7 +1672,9 @@ export default function AtlasExplorer() {
                           <span className="atlas-v2-visit-copy">
                             <strong>{visit.name}</strong>
                             <small>
-                              {formatVisitDate(visit.visitedOn)} ·{" "}
+                              {visit.visitedOn
+                                ? `${formatVisitDate(visit.visitedOn)} · `
+                                : ""}
                               {travelTypeDescription(visit.travelType)}
                             </small>
                           </span>
@@ -1733,8 +1825,8 @@ export default function AtlasExplorer() {
                 </h2>
                 <p>
                   {scope === "china"
-                    ? "按省级足迹解锁中国成就，并单独选择中国主成就。"
-                    : "按全球足迹解锁成就，并单独选择全球主成就。"}
+                    ? "按版图、区域、城市、景点与玩法解锁；主成就必显，海报最多展示五枚。"
+                    : "按全球足迹解锁成就；主成就必显，海报最多展示五枚。"}
                 </p>
               </div>
               <button
@@ -1764,6 +1856,9 @@ export default function AtlasExplorer() {
                 <span>
                   已解锁
                   <small>共 {scopeTitles.length} 枚</small>
+                  <small>
+                    海报已选 {selectedPosterTitles.length}/{MAX_FEATURED_TITLES}
+                  </small>
                 </span>
               </div>
             </div>
@@ -1772,17 +1867,15 @@ export default function AtlasExplorer() {
               className="atlas-v2-title-categories"
               aria-label="成就分类"
             >
-              {scope === "world" ? (
-                <button
-                  type="button"
-                  className={activeTitleCategory === "all" ? "is-active" : ""}
-                  aria-pressed={activeTitleCategory === "all"}
-                  onClick={() => setActiveTitleCategory("all")}
-                >
-                  全部
-                  <b>{scopeTitles.length}</b>
-                </button>
-              ) : null}
+              <button
+                type="button"
+                className={activeTitleCategory === "all" ? "is-active" : ""}
+                aria-pressed={activeTitleCategory === "all"}
+                onClick={() => setActiveTitleCategory("all")}
+              >
+                全部
+                <b>{scopeTitles.length}</b>
+              </button>
               {availableTitleCategories.map((category) => {
                 const categoryTitles = scopeTitles.filter(
                   (title) => title.category === category.id,
@@ -1816,6 +1909,8 @@ export default function AtlasExplorer() {
                   (item) => item.id === title.category,
                 );
                 const isPrimary = roamingBadge.id === title.id;
+                const isPosterSelected =
+                  isPrimary || featuredTitleIds[scope].includes(title.id);
                 return (
                   <article
                     key={title.id}
@@ -1837,30 +1932,58 @@ export default function AtlasExplorer() {
                         )}
                       </span>
                       <small>{category?.label}</small>
-                      {isPrimary ? <b>主成就</b> : null}
+                      <span className="atlas-v2-title-card-flags">
+                        {isPrimary ? <b>主成就</b> : null}
+                        {isPosterSelected ? <b>海报</b> : null}
+                      </span>
                     </div>
                     <strong>{title.title}</strong>
                     <p>{title.description}</p>
                     {title.unlocked ? (
-                      <button
-                        type="button"
-                        disabled={isPrimary}
-                        onClick={() =>
-                          choosePrimaryTitle(title.id, title.title)
-                        }
-                      >
-                      {isPrimary ? (
-                        <>
-                          <Check size={13} />
-                          当前主成就
-                        </>
-                      ) : (
-                        <>
-                          <Star size={13} />
-                          设为主成就
-                        </>
-                        )}
-                      </button>
+                      <div className="atlas-v2-title-card-actions">
+                        <button
+                          type="button"
+                          disabled={isPrimary}
+                          onClick={() =>
+                            choosePrimaryTitle(title.id, title.title)
+                          }
+                        >
+                          {isPrimary ? (
+                            <>
+                              <Check size={13} />
+                              当前主成就
+                            </>
+                          ) : (
+                            <>
+                              <Star size={13} />
+                              设为主成就
+                            </>
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          className={isPosterSelected ? "is-selected" : ""}
+                          aria-pressed={isPosterSelected}
+                          disabled={isPrimary}
+                          onClick={() =>
+                            toggleFeaturedTitle(title.id, title.title)
+                          }
+                        >
+                          {isPrimary ? (
+                            "主成就必显"
+                          ) : isPosterSelected ? (
+                            <>
+                              <Check size={13} />
+                              海报已选
+                            </>
+                          ) : (
+                            <>
+                              <Plus size={13} />
+                              加入海报
+                            </>
+                          )}
+                        </button>
+                      </div>
                     ) : (
                       <div className="atlas-v2-title-progress-wrap">
                         <div className="atlas-v2-title-progress">
@@ -1882,10 +2005,10 @@ export default function AtlasExplorer() {
               <span>
                 <BookOpen size={13} />
                 {scope === "china"
-                  ? "中国成就随省级足迹自动解锁。"
+                  ? "中国成就随省份、城市、景点与旅行方式自动解锁。"
                   : "全球成就随足迹自动解锁，不做排名。"}
               </span>
-              <span>两个维度的主成就互不覆盖。</span>
+              <span>主成就固定排第一，两个维度的选择互不覆盖。</span>
             </footer>
           </section>
         </div>
@@ -1899,6 +2022,8 @@ export default function AtlasExplorer() {
           countryRegions={countryRegions}
           primaryTitle={roamingBadge}
           unlockedTitles={unlockedTitles}
+          selectedTitles={selectedPosterTitles}
+          onToggleTitle={toggleFeaturedTitle}
           onClose={() => setAlmanacOpen(false)}
           onNotice={showToast}
         />
@@ -1936,61 +2061,84 @@ export default function AtlasExplorer() {
             <span>
               <CalendarDays size={15} />
               到访日期
+              <small>可选</small>
             </span>
-            <div className="atlas-v2-date-selects">
-              <label>
-                <small>年</small>
-                <select
-                  value={selectedDateParts.year}
-                  aria-label="到访年份"
-                  onChange={(event) =>
-                    updateVisitDate("year", Number(event.target.value))
-                  }
+            {visitDate ? (
+              <div className="atlas-v2-date-entry">
+                <div className="atlas-v2-date-selects">
+                  <label>
+                    <small>年</small>
+                    <select
+                      value={selectedDateParts.year}
+                      aria-label="到访年份"
+                      onChange={(event) =>
+                        updateVisitDate("year", Number(event.target.value))
+                      }
+                    >
+                      {yearOptions.map((year) => (
+                        <option key={year} value={year}>
+                          {year} 年
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <small>月</small>
+                    <select
+                      value={selectedDateParts.month}
+                      aria-label="到访月份"
+                      onChange={(event) =>
+                        updateVisitDate("month", Number(event.target.value))
+                      }
+                    >
+                      {Array.from(
+                        { length: maximumMonth },
+                        (_, index) => index + 1,
+                      ).map((month) => (
+                        <option key={month} value={month}>
+                          {month} 月
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <small>日</small>
+                    <select
+                      value={selectedDateParts.day}
+                      aria-label="到访日期"
+                      onChange={(event) =>
+                        updateVisitDate("day", Number(event.target.value))
+                      }
+                    >
+                      {Array.from(
+                        { length: maximumDay },
+                        (_, index) => index + 1,
+                      ).map((day) => (
+                        <option key={day} value={day}>
+                          {day} 日
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <button
+                  type="button"
+                  className="atlas-v2-date-clear"
+                  onClick={() => setVisitDate("")}
                 >
-                  {yearOptions.map((year) => (
-                    <option key={year} value={year}>
-                      {year} 年
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <small>月</small>
-                <select
-                  value={selectedDateParts.month}
-                  aria-label="到访月份"
-                  onChange={(event) =>
-                    updateVisitDate("month", Number(event.target.value))
-                  }
-                >
-                  {Array.from({ length: maximumMonth }, (_, index) => index + 1).map(
-                    (month) => (
-                      <option key={month} value={month}>
-                        {month} 月
-                      </option>
-                    ),
-                  )}
-                </select>
-              </label>
-              <label>
-                <small>日</small>
-                <select
-                  value={selectedDateParts.day}
-                  aria-label="到访日期"
-                  onChange={(event) =>
-                    updateVisitDate("day", Number(event.target.value))
-                  }
-                >
-                  {Array.from({ length: maximumDay }, (_, index) => index + 1).map(
-                    (day) => (
-                      <option key={day} value={day}>
-                        {day} 日
-                      </option>
-                    ),
-                  )}
-                </select>
-              </label>
-            </div>
+                  不显示日期
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="atlas-v2-date-add"
+                onClick={() => setVisitDate(todayISO())}
+              >
+                <Plus size={14} />
+                添加日期
+              </button>
+            )}
           </div>
 
           <fieldset className="atlas-v2-travel-picker">

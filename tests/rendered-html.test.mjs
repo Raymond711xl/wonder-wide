@@ -117,6 +117,10 @@ test("keeps the two-level static atlas as a client boundary", async () => {
   assert.match(explorer, /evaluateRoamingTitles/);
   assert.match(explorer, /type AtlasScope = "world" \| "china"/);
   assert.match(explorer, /SCOPED_TITLE_STORAGE_KEY/);
+  assert.match(explorer, /SCOPED_FEATURED_TITLE_STORAGE_KEY/);
+  assert.match(explorer, /MAX_FEATURED_TITLES = 5/);
+  assert.match(explorer, /selectedPosterTitles/);
+  assert.match(explorer, /toggleFeaturedTitle/);
   assert.match(explorer, /scopeVisits/);
   assert.match(explorer, /data-scope=\{scope\}/);
   assert.match(explorer, /aria-label="足迹维度"/);
@@ -128,6 +132,24 @@ test("keeps the two-level static atlas as a client boundary", async () => {
   assert.match(roamingTitles, /南法松弛派/);
   assert.match(roamingTitles, /新马泰三连晃/);
   assert.match(roamingTitles, /极光带候场人/);
+  assert.match(roamingTitles, /CHINA_CITY_ACHIEVEMENTS/);
+  assert.match(roamingTitles, /CHINA_LANDMARK_ACHIEVEMENTS/);
+  assert.match(roamingTitles, /isChinaRoamingTitleCategory/);
+  assert.match(roamingTitles, /8D 导航失灵/);
+  assert.match(roamingTitles, /小炉纯青/);
+  assert.match(roamingTitles, /尔滨冰雪来客/);
+  assert.match(roamingTitles, /小西天抬头党/);
+  assert.match(roamingTitles, /一日三城特种兵/);
+  const cityAchievementBlock =
+    roamingTitles.match(
+      /const CHINA_CITY_ACHIEVEMENTS = \[([\s\S]*?)\] as const;/,
+    )?.[1] ?? "";
+  const landmarkAchievementBlock =
+    roamingTitles.match(
+      /const CHINA_LANDMARK_ACHIEVEMENTS = \[([\s\S]*?)\] as const;/,
+    )?.[1] ?? "";
+  assert.ok((cityAchievementBlock.match(/\bid:/g) ?? []).length >= 40);
+  assert.ok((landmarkAchievementBlock.match(/\bid:/g) ?? []).length >= 25);
   assert.match(explorer, /WORLD_COUNTRY_TOTAL/);
   assert.match(explorer, /atlas-v2-roaming-progress/);
   assert.match(explorer, /为你推荐/);
@@ -135,9 +157,12 @@ test("keeps the two-level static atlas as a client boundary", async () => {
   assert.match(explorer, /fetchRecommendedLandmarks/);
   assert.match(explorer, /overpass-api\.de\/api\/interpreter/);
   assert.match(explorer, /正在为你整理这座城市的推荐景点/);
-  assert.match(staticCss, /--atlas-type-title: 22px/);
-  assert.match(staticCss, /--atlas-type-note: 12px/);
-  assert.match(staticCss, /--atlas-type-aux: 9px/);
+  assert.match(staticCss, /--atlas-type-title: 24px/);
+  assert.match(staticCss, /--atlas-type-note: 14px/);
+  assert.match(staticCss, /--atlas-type-aux: 12px/);
+  assert.match(staticCss, /Readable three-step interface type scale/);
+  assert.match(staticCss, /\.atlas-v2-date-add/);
+  assert.match(staticCss, /\.atlas-v2-title-card-actions/);
   assert.match(staticCss, /static-country-badge:hover \.badge-name/);
   assert.match(staticCss, /static-city-marker:hover \.city-label-card/);
   assert.match(staticCss, /atlas-v2-heat-scale/);
@@ -195,7 +220,11 @@ test("keeps the two-level static atlas as a client boundary", async () => {
     /\/data\/country-subdivisions\/CN\.geojson/,
   );
   assert.match(wanderAlmanac, /CHINA_PROVINCE_TOTAL = 34/);
-  assert.match(wanderAlmanac, /chinaFeaturedTitles/);
+  assert.match(wanderAlmanac, /selectedTitles/);
+  assert.match(wanderAlmanac, /onToggleTitle/);
+  assert.match(wanderAlmanac, /选择海报展示成就/);
+  assert.match(wanderAlmanac, /CHINA_MAP_CONTENT_WIDTH = 645/);
+  assert.match(wanderAlmanac, /CHINA_MAP_CONTENT_HEIGHT = 420/);
   assert.match(wanderAlmanac, /chinaProvinceKey/);
   assert.match(wanderAlmanac, /马赛克中国地图/);
   assert.match(wanderAlmanac, /dimension === "china" \? "中国" : "地球"/);
@@ -212,6 +241,7 @@ test("keeps the two-level static atlas as a client boundary", async () => {
   assert.match(almanacCss, /\.wander-almanac-poster/);
   assert.match(almanacCss, /\.wander-almanac-map/);
   assert.match(almanacCss, /\.wander-almanac-dimension-label/);
+  assert.match(almanacCss, /\.wander-almanac-achievement-picker/);
   assert.match(staticCss, /\.atlas-v2-scope-tabs/);
   assert.match(staticCss, /\[data-scope="china"\]/);
   assert.doesNotMatch(
@@ -237,6 +267,9 @@ test("keeps the two-level static atlas as a client boundary", async () => {
     explorer,
     /type="date"|onCityFocus|focusCity|地图选城市|handlePointPick|\/reverse\?/,
   );
+  assert.match(explorer, /添加日期/);
+  assert.match(explorer, /不显示日期/);
+  assert.doesNotMatch(explorer, /请选择到访日期/);
   assert.doesNotMatch(staticMap, /onCityFocus|focusCity/);
   assert.doesNotMatch(staticMap, /getScreenCTM|onPointPick|pickMode/);
   assert.doesNotMatch(explorer, /maplibre/i);
