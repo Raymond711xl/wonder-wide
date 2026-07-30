@@ -4120,3 +4120,47 @@
     width: min(318px, calc(100vw - 72px));
   }
 }
+
+/*
+ * Portrait phones use two non-overlapping zones: the map stays centered in
+ * the upper half, while the former desktop side panel becomes a fixed lower
+ * information region. Landscape and desktop retain their existing layout.
+ */
+@media (max-width: 880px) and (orientation: portrait) {
+  .static-atlas-map {
+    inset: 128px 0 calc(48dvh + 10px);
+    border-bottom: 1px solid rgba(33, 20, 63, 0.16);
+  }
+
+  .atlas-v2-panel,
+  .atlas-v2-panel.is-open {
+    top: 52dvh;
+    right: 8px;
+    bottom: 8px;
+    left: 8px;
+    width: auto;
+    max-height: none;
+    transform: none;
+  }
+
+  .atlas-v2-panel-handle,
+  .atlas-v2-mobile-footprints {
+    display: none;
+  }
+
+  .atlas-v2-map-tools {
+    top: calc(52dvh - 166px);
+    right: 12px;
+    bottom: auto;
+  }
+
+  .atlas-v2-map-legend-anchor {
+    top: calc(52dvh - 50px);
+    right: 12px;
+    bottom: auto;
+  }
+
+  .atlas-v2-toast {
+    bottom: calc(48dvh + 18px);
+  }
+}

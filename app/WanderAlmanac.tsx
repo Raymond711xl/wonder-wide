@@ -1067,7 +1067,8 @@ export default function WanderAlmanac({
   useEffect(() => {
     const updateScale = () => {
       const availableWidth = Math.max(320, window.innerWidth - 32);
-      const toolbarHeight = window.innerWidth <= 720 ? 138 : 92;
+      const toolbarHeight =
+        window.innerWidth <= 720 ? 228 : window.innerWidth <= 1100 ? 156 : 108;
       const availableHeight = Math.max(
         420,
         window.innerHeight - toolbarHeight - 48,
@@ -1169,7 +1170,7 @@ export default function WanderAlmanac({
           <ArrowLeft size={17} />
           回到地图
         </button>
-        <div>
+        <div className="wander-almanac-toolbar-copy">
           <small>SECOND DRAFT · 短版海报</small>
           <strong id="wander-almanac-preview-title">
             我的{dimension === "china" ? "中国" : "世界"}打卡地图

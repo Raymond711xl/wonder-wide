@@ -183,6 +183,12 @@ test("keeps the two-level static atlas as a client boundary", async () => {
   assert.match(explorer, /atlas-v2-map-legend-anchor/);
   assert.match(explorer, /atlas-v2-map-legend-summary/);
   assert.match(staticCss, /Stable familiarity legend anchor/);
+  assert.match(staticCss, /Portrait phones use two non-overlapping zones/);
+  assert.match(
+    staticCss,
+    /@media \(max-width: 880px\) and \(orientation: portrait\)/,
+  );
+  assert.match(staticCss, /\.atlas-v2-panel,\s*\.atlas-v2-panel\.is-open/);
   assert.match(
     staticCss,
     /\.atlas-v2-map-legend-anchor:hover \.atlas-v2-map-legend/,
@@ -287,6 +293,9 @@ test("keeps the two-level static atlas as a client boundary", async () => {
   assert.match(almanacCss, /--almanac-type-title: 54px/);
   assert.match(almanacCss, /--almanac-type-content: 34px/);
   assert.match(almanacCss, /--almanac-type-label: 24px/);
+  assert.match(almanacCss, /--almanac-poster-gutter: 54px/);
+  assert.match(almanacCss, /grid-template-rows: 228px minmax\(0, 1fr\)/);
+  assert.match(almanacCss, /grid-template-columns: 1fr;\s*gap: 8px/);
   assert.doesNotMatch(staticMap, /static-map-mode-note/);
   assert.doesNotMatch(explorer, /BACK TO WORLD|WORLD COVERAGE|MAKE MY MAP/);
   assert.match(atlasData, /TRAVEL_TYPE_OPTIONS/);
