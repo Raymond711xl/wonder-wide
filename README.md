@@ -1,6 +1,56 @@
 # 晃悠 · Wander Wide
 
-无需登录的个人旅行足迹原型。世界层用静态国家热度地图表达足迹密度，国家层展示城市、到访日期、出游性质与景点。
+中文 | [English](README_EN.md)
+
+![晃悠 · Wander Wide](public/og-wander-wide.png)
+
+无需登录的个人旅行足迹工具。把去过的国家、城市和景点留在一张可探索、可统计、可生成海报的地图上。
+
+> 在线演示暂未公开。仓库发布后，任何人都可以在自己的电脑上运行本项目。
+
+## 主要功能
+
+- 在全球地图上搜索并记录国家、城市与景点。
+- 在全球 / 中国两个独立维度查看足迹、覆盖率和旅行称号。
+- 可选填写到访日期和出游性质；未填写日期也可以保存。
+- 按到访城市数量与旅行方式生成国家熟度热力图。
+- 生成世界打卡地图或中国打卡地图，并保存为图片。
+- 数据默认保存在当前浏览器的 `localStorage` 中，无需注册或登录。
+
+## 本地运行
+
+需要 Node.js `>=22.13.0`。
+
+```bash
+npm ci
+npm run dev
+```
+
+开发服务器启动后，打开终端中显示的本地地址。
+
+如需验证生产构建：
+
+```bash
+npm run build
+npm run start
+```
+
+基础地图与行政边界随项目一同提供。城市搜索和景点推荐使用 OpenStreetMap 的 Nominatim 与 Overpass 服务，因此这两项功能需要联网。
+
+## 自行部署
+
+这个项目可以在他人的电脑上独立运行，也可以部署到兼容 Cloudflare Workers 的托管环境。当前构建链使用 Vinext，已经适配 Codex Sites；GitHub Pages 不是当前开箱即用的部署目标。
+
+每一份浏览器数据彼此独立：项目没有账号系统，也没有中心数据库。把网站分享给朋友后，他们会在自己的浏览器中建立各自的足迹，不会看到你的本地记录。
+
+如果从这个仓库创建新的 Codex Site，应为副本建立独立的 Sites 项目绑定，不要复用仓库作者的 `project_id`。
+
+## 数据与隐私
+
+- 旅行记录、称号选择与界面状态保存在浏览器 `localStorage`。
+- 项目目前不会把个人足迹上传到自己的服务器。
+- 城市和景点查询会向 Nominatim / Overpass 发送搜索词与地图范围。
+- 清除浏览器站点数据会同时清除本机保存的足迹；当前版本不包含云同步。
 
 ## 地图架构
 
@@ -30,16 +80,20 @@
 
 - 城市统计：GeoNames `cities15000`，CC BY 4.0。
 - 国家内部边界：geoBoundaries `gbOpen`，CC BY 4.0；中国为 34 个 ADM1 省级区域，西班牙为 52 个 ADM2 省级行政区。
+- 世界国家轮廓与首都数据：Natural Earth，公有领域。
+- 在线城市与景点查询：OpenStreetMap Nominatim / Overpass；使用时请遵守相应服务政策与 OpenStreetMap 署名要求。
 - 运行 `node scripts/normalize-map-data.mjs /path/to/cities15000.txt` 可重新压缩边界并生成城市统计。
 
-## 本地运行
+## 项目结构
 
-需要 Node.js `>=22.13.0`。
-
-```bash
-npm install
-npm run dev
-```
+| 路径 | 用途 |
+| --- | --- |
+| `app/AtlasExplorer.tsx` | 足迹录入、搜索与地图交互 |
+| `app/StaticAtlasMap.tsx` | 全球 / 国家 SVG 地图渲染 |
+| `app/WanderAlmanac.tsx` | 世界 / 中国成品地图与图片导出 |
+| `app/roaming-titles.ts` | 全球与中国旅行称号规则 |
+| `public/data/` | 本地地图、行政区与城市统计数据 |
+| `tests/` | 构建产物和关键交互的回归测试 |
 
 ## 验证
 
@@ -47,3 +101,7 @@ npm run dev
 npm run lint
 npm test
 ```
+
+## 开源协议状态
+
+项目尚未选择开源协议。公开仓库后，其他人可以查看代码；如果希望允许任何人自由复制、修改和重新部署，发布前还需要加入明确的开源协议。个人项目通常可以优先考虑 MIT License。
