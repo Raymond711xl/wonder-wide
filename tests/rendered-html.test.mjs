@@ -112,6 +112,13 @@ test("keeps the two-level static atlas as a client boundary", async () => {
   assert.match(explorer, /travelType/);
   assert.match(explorer, /hiddenScore/);
   assert.match(explorer, /返回全球/);
+  assert.match(explorer, /placeholder="全局搜索城市，例如：上海、巴黎"/);
+  assert.match(explorer, /isCountryLevelResult/);
+  assert.match(
+    explorer,
+    /国家不能直接生成打卡记录，请继续搜索并选择一座具体城市/,
+  );
+  assert.doesNotMatch(explorer, /params\.set\(\s*"countrycodes"/);
   assert.match(explorer, /openVisitEditor/);
   assert.match(explorer, /editingVisitId/);
   assert.match(explorer, /evaluateRoamingTitles/);
@@ -195,6 +202,16 @@ test("keeps the two-level static atlas as a client boundary", async () => {
   );
   assert.match(staticCss, /\.atlas-v2-toast \{\s*z-index: 240;/);
   assert.match(staticCss, /\.atlas-v2-title-poster-mark/);
+  assert.match(staticCss, /\.atlas-v2-panel\.is-mobile-expanded/);
+  assert.match(staticCss, /\.atlas-v2-panel\.is-mobile-collapsed/);
+  assert.match(
+    staticCss,
+    /data-map-mode="country"[\s\S]*static-atlas-coverage \{\s*top: 82px !important/,
+  );
+  assert.match(explorer, /data-mobile-panel=\{mobilePanelPosition\}/);
+  assert.match(explorer, /handleMobilePanelPointerStart/);
+  assert.match(explorer, /handleMobilePanelPointerEnd/);
+  assert.match(explorer, /atlas-v2-mobile-panel-grip/);
   assert.match(
     staticCss,
     /Final control alignment and achievement-selection feedback/,
@@ -214,6 +231,10 @@ test("keeps the two-level static atlas as a client boundary", async () => {
   assert.match(staticMap, /static-active-country-name/);
   assert.match(staticMap, /badge-count-dot/);
   assert.match(staticMap, /country-city-counts\.json/);
+  assert.match(staticMap, /world-capitals\.json/);
+  assert.match(staticMap, /capitalCatalog/);
+  assert.match(staticMap, /is-capital/);
+  assert.match(staticMap, /添加首都/);
   assert.match(staticMap, /country-subdivisions/);
   assert.match(staticMap, /static-atlas-coverage/);
   assert.match(staticMap, /formatCoverage/);
@@ -423,6 +444,35 @@ test("ships local coverage counts and detailed country boundaries", async () => 
   assert.match(spain.attribution, /geoBoundaries/);
 });
 
+test("ships a complete clickable capital catalog for every map country", async () => {
+  const raw = await readFile(
+    new URL("../public/data/world-capitals.json", import.meta.url),
+    "utf8",
+  );
+  const catalog = JSON.parse(raw);
+  const entries = Object.entries(catalog.capitals);
+
+  assert.equal(catalog.countryCount, 173);
+  assert.equal(entries.length, 173);
+  assert.ok(
+    entries.every(
+      ([code, capitals]) =>
+        code.length === 2 &&
+        Array.isArray(capitals) &&
+        capitals.length > 0 &&
+        capitals.every(
+          (capital) =>
+            capital.name &&
+            Number.isFinite(capital.longitude) &&
+            Number.isFinite(capital.latitude),
+        ),
+    ),
+  );
+  assert.equal(catalog.capitals.CN[0].name, "北京");
+  assert.equal(catalog.capitals.PR[0].name, "圣胡安");
+  assert.match(catalog.attribution, /Natural Earth/);
+});
+
 test("merges Taiwan geometry and search results into China", async () => {
   const [explorer, staticMap] = await Promise.all([
     readFile(new URL("../app/AtlasExplorer.tsx", import.meta.url), "utf8"),
@@ -433,7 +483,7 @@ test("merges Taiwan geometry and search results into China", async () => {
   assert.match(staticMap, /country\.code !== "TW"/);
   assert.match(explorer, /sourceCountryCode === "TW"/);
   assert.match(explorer, /isTaiwan \? "CN"/);
-  assert.match(explorer, /"cn,tw"/);
+  assert.doesNotMatch(explorer, /params\.set\(\s*"countrycodes"/);
   assert.doesNotMatch(`${explorer}\n${staticMap}`, /中华民国/);
 });
 

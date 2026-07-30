@@ -1,0 +1,1416 @@
+{
+  "source": "Natural Earth 1:10m populated places, with a manual administrative centre fallback for TF",
+  "sourceUrl": "https://github.com/nvkelso/natural-earth-vector/blob/master/geojson/ne_10m_populated_places.geojson",
+  "attribution": "Natural Earth (public domain)",
+  "countryCount": 173,
+  "capitals": {
+    "AE": [
+      {
+        "name": "阿布扎比",
+        "englishName": "Abu Dhabi",
+        "longitude": 54.366593,
+        "latitude": 24.466684
+      }
+    ],
+    "AF": [
+      {
+        "name": "喀布尔",
+        "englishName": "Kabul",
+        "longitude": 69.181314,
+        "latitude": 34.518636
+      }
+    ],
+    "AL": [
+      {
+        "name": "地拉那",
+        "englishName": "Tirana",
+        "longitude": 19.818883,
+        "latitude": 41.327541
+      }
+    ],
+    "AM": [
+      {
+        "name": "埃里温",
+        "englishName": "Yerevan",
+        "longitude": 44.511606,
+        "latitude": 40.183097
+      }
+    ],
+    "AO": [
+      {
+        "name": "罗安达",
+        "englishName": "Luanda",
+        "longitude": 13.232481,
+        "latitude": -8.83634
+      }
+    ],
+    "AR": [
+      {
+        "name": "布宜诺斯艾利斯",
+        "englishName": "Buenos Aires",
+        "longitude": -58.432513,
+        "latitude": -34.610715
+      }
+    ],
+    "AT": [
+      {
+        "name": "维也纳",
+        "englishName": "Vienna",
+        "longitude": 16.364693,
+        "latitude": 48.201961
+      }
+    ],
+    "AU": [
+      {
+        "name": "堪培拉",
+        "englishName": "Canberra",
+        "longitude": 149.129026,
+        "latitude": -35.283029
+      }
+    ],
+    "AZ": [
+      {
+        "name": "巴库",
+        "englishName": "Baku",
+        "longitude": 49.860271,
+        "latitude": 40.397218
+      }
+    ],
+    "BA": [
+      {
+        "name": "萨拉热窝",
+        "englishName": "Sarajevo",
+        "longitude": 18.383002,
+        "latitude": 43.850022
+      }
+    ],
+    "BD": [
+      {
+        "name": "达卡",
+        "englishName": "Dhaka",
+        "longitude": 90.406634,
+        "latitude": 23.725006
+      }
+    ],
+    "BE": [
+      {
+        "name": "布鲁塞尔",
+        "englishName": "Brussels",
+        "longitude": 4.331371,
+        "latitude": 50.835263
+      }
+    ],
+    "BF": [
+      {
+        "name": "瓦加杜古",
+        "englishName": "Ouagadougou",
+        "longitude": -1.52667,
+        "latitude": 12.372262
+      }
+    ],
+    "BG": [
+      {
+        "name": "索非亚",
+        "englishName": "Sofia",
+        "longitude": 23.314708,
+        "latitude": 42.685295
+      }
+    ],
+    "BI": [
+      {
+        "name": "布琼布拉",
+        "englishName": "Bujumbura",
+        "longitude": 29.360006,
+        "latitude": -3.376087
+      }
+    ],
+    "BJ": [
+      {
+        "name": "波多诺伏",
+        "englishName": "Porto-Novo",
+        "longitude": 2.616626,
+        "latitude": 6.483311
+      }
+    ],
+    "BN": [
+      {
+        "name": "斯里巴加湾",
+        "englishName": "Bandar Seri Begawan",
+        "longitude": 114.933284,
+        "latitude": 4.883331
+      }
+    ],
+    "BO": [
+      {
+        "name": "苏克雷",
+        "englishName": "Sucre",
+        "longitude": -65.259516,
+        "latitude": -19.040971
+      }
+    ],
+    "BR": [
+      {
+        "name": "巴西利亚",
+        "englishName": "Brasília",
+        "longitude": -47.917998,
+        "latitude": -15.781394
+      }
+    ],
+    "BS": [
+      {
+        "name": "拿骚",
+        "englishName": "Nassau",
+        "longitude": -77.350044,
+        "latitude": 25.08339
+      }
+    ],
+    "BT": [
+      {
+        "name": "廷布",
+        "englishName": "Thimphu",
+        "longitude": 89.639014,
+        "latitude": 27.472986
+      }
+    ],
+    "BW": [
+      {
+        "name": "嘉柏隆里",
+        "englishName": "Gaborone",
+        "longitude": 25.911948,
+        "latitude": -24.646314
+      }
+    ],
+    "BY": [
+      {
+        "name": "明斯克",
+        "englishName": "Minsk",
+        "longitude": 27.564681,
+        "latitude": 53.901923
+      }
+    ],
+    "BZ": [
+      {
+        "name": "贝尔墨邦",
+        "englishName": "Belmopan",
+        "longitude": -88.767073,
+        "latitude": 17.252033
+      }
+    ],
+    "CA": [
+      {
+        "name": "渥太华",
+        "englishName": "Ottawa",
+        "longitude": -75.701961,
+        "latitude": 45.418643
+      }
+    ],
+    "CD": [
+      {
+        "name": "金沙萨",
+        "englishName": "Kinshasa",
+        "longitude": 15.313026,
+        "latitude": -4.327778
+      }
+    ],
+    "CF": [
+      {
+        "name": "班吉",
+        "englishName": "Bangui",
+        "longitude": 18.558288,
+        "latitude": 4.366644
+      }
+    ],
+    "CG": [
+      {
+        "name": "布拉柴维尔",
+        "englishName": "Brazzaville",
+        "longitude": 15.282744,
+        "latitude": -4.25724
+      }
+    ],
+    "CH": [
+      {
+        "name": "伯尔尼",
+        "englishName": "Bern",
+        "longitude": 7.466976,
+        "latitude": 46.916683
+      }
+    ],
+    "CI": [
+      {
+        "name": "亚穆苏克罗",
+        "englishName": "Yamoussoukro",
+        "longitude": -5.275503,
+        "latitude": 6.818381
+      }
+    ],
+    "CL": [
+      {
+        "name": "圣地亚哥",
+        "englishName": "Santiago",
+        "longitude": -70.650504,
+        "latitude": -33.440205
+      }
+    ],
+    "CM": [
+      {
+        "name": "雅温得",
+        "englishName": "Yaoundé",
+        "longitude": 11.514705,
+        "latitude": 3.868647
+      }
+    ],
+    "CN": [
+      {
+        "name": "北京",
+        "englishName": "Beijing",
+        "longitude": 116.394201,
+        "latitude": 39.90172
+      }
+    ],
+    "CO": [
+      {
+        "name": "波哥大",
+        "englishName": "Bogota",
+        "longitude": -74.08529,
+        "latitude": 4.598369
+      }
+    ],
+    "CR": [
+      {
+        "name": "圣荷西",
+        "englishName": "San José",
+        "longitude": -84.078814,
+        "latitude": 9.930371
+      }
+    ],
+    "CU": [
+      {
+        "name": "哈瓦那",
+        "englishName": "Havana",
+        "longitude": -82.366128,
+        "latitude": 23.133905
+      }
+    ],
+    "CY": [
+      {
+        "name": "尼科西亚",
+        "englishName": "Nicosia",
+        "longitude": 33.366635,
+        "latitude": 35.166677
+      }
+    ],
+    "CZ": [
+      {
+        "name": "布拉格",
+        "englishName": "Prague",
+        "longitude": 14.422939,
+        "latitude": 50.086967
+      }
+    ],
+    "DE": [
+      {
+        "name": "柏林",
+        "englishName": "Berlin",
+        "longitude": 13.399603,
+        "latitude": 52.523764
+      }
+    ],
+    "DJ": [
+      {
+        "name": "吉布地",
+        "englishName": "Djibouti",
+        "longitude": 43.148002,
+        "latitude": 11.595014
+      }
+    ],
+    "DK": [
+      {
+        "name": "哥本哈根",
+        "englishName": "København",
+        "longitude": 12.56154,
+        "latitude": 55.68051
+      }
+    ],
+    "DO": [
+      {
+        "name": "圣多明哥",
+        "englishName": "Santo Domingo",
+        "longitude": -69.929742,
+        "latitude": 18.470745
+      }
+    ],
+    "DZ": [
+      {
+        "name": "阿尔及尔",
+        "englishName": "Algiers",
+        "longitude": 3.048607,
+        "latitude": 36.765011
+      }
+    ],
+    "EC": [
+      {
+        "name": "基多",
+        "englishName": "Quito",
+        "longitude": -78.501997,
+        "latitude": -0.213042
+      }
+    ],
+    "EE": [
+      {
+        "name": "塔林",
+        "englishName": "Tallinn",
+        "longitude": 24.728041,
+        "latitude": 59.433877
+      }
+    ],
+    "EG": [
+      {
+        "name": "开罗",
+        "englishName": "Cairo",
+        "longitude": 31.248022,
+        "latitude": 30.051906
+      }
+    ],
+    "EH": [
+      {
+        "name": "比鄂-雷楼",
+        "englishName": "Bir Lehlou",
+        "longitude": -9.652522,
+        "latitude": 26.119167
+      }
+    ],
+    "ER": [
+      {
+        "name": "阿斯马拉",
+        "englishName": "Asmara",
+        "longitude": 38.933324,
+        "latitude": 15.333339
+      }
+    ],
+    "ES": [
+      {
+        "name": "马德里",
+        "englishName": "Madrid",
+        "longitude": -3.685297,
+        "latitude": 40.401972
+      }
+    ],
+    "ET": [
+      {
+        "name": "亚的斯亚贝巴",
+        "englishName": "Addis Ababa",
+        "longitude": 38.698059,
+        "latitude": 9.035256
+      }
+    ],
+    "FI": [
+      {
+        "name": "赫尔辛基",
+        "englishName": "Helsinki",
+        "longitude": 24.932457,
+        "latitude": 60.163804
+      }
+    ],
+    "FJ": [
+      {
+        "name": "苏瓦",
+        "englishName": "Suva",
+        "longitude": 178.441707,
+        "latitude": -18.133016
+      }
+    ],
+    "FK": [
+      {
+        "name": "斯坦利",
+        "englishName": "Stanley",
+        "longitude": -57.849968,
+        "latitude": -51.700011
+      }
+    ],
+    "FR": [
+      {
+        "name": "巴黎",
+        "englishName": "Paris",
+        "longitude": 2.352992,
+        "latitude": 48.858092
+      }
+    ],
+    "GA": [
+      {
+        "name": "利伯维尔",
+        "englishName": "Libreville",
+        "longitude": 9.457965,
+        "latitude": 0.385389
+      }
+    ],
+    "GB": [
+      {
+        "name": "伦敦",
+        "englishName": "London",
+        "longitude": -0.118668,
+        "latitude": 51.501941
+      }
+    ],
+    "GE": [
+      {
+        "name": "第比利斯",
+        "englishName": "Tbilisi",
+        "longitude": 44.78885,
+        "latitude": 41.726956
+      }
+    ],
+    "GH": [
+      {
+        "name": "阿克拉",
+        "englishName": "Accra",
+        "longitude": -0.218662,
+        "latitude": 5.55198
+      }
+    ],
+    "GL": [
+      {
+        "name": "努克",
+        "englishName": "Nuuk",
+        "longitude": -51.732659,
+        "latitude": 64.198281
+      }
+    ],
+    "GM": [
+      {
+        "name": "班竹",
+        "englishName": "Banjul",
+        "longitude": -16.591701,
+        "latitude": 13.453876
+      }
+    ],
+    "GN": [
+      {
+        "name": "科纳克里",
+        "englishName": "Conakry",
+        "longitude": -13.682181,
+        "latitude": 9.533469
+      }
+    ],
+    "GQ": [
+      {
+        "name": "马拉博",
+        "englishName": "Malabo",
+        "longitude": 8.783278,
+        "latitude": 3.750015
+      }
+    ],
+    "GR": [
+      {
+        "name": "雅典",
+        "englishName": "Athens",
+        "longitude": 23.731375,
+        "latitude": 37.985272
+      }
+    ],
+    "GT": [
+      {
+        "name": "瓜地馬拉",
+        "englishName": "Guatemala City",
+        "longitude": -90.528911,
+        "latitude": 14.623081
+      }
+    ],
+    "GW": [
+      {
+        "name": "比绍",
+        "englishName": "Bissau",
+        "longitude": -15.598361,
+        "latitude": 11.865024
+      }
+    ],
+    "GY": [
+      {
+        "name": "乔治敦",
+        "englishName": "Georgetown",
+        "longitude": -58.167029,
+        "latitude": 6.801974
+      }
+    ],
+    "HN": [
+      {
+        "name": "特古西加尔巴",
+        "englishName": "Tegucigalpa",
+        "longitude": -87.219475,
+        "latitude": 14.103991
+      }
+    ],
+    "HR": [
+      {
+        "name": "萨格勒布",
+        "englishName": "Zagreb",
+        "longitude": 15.999995,
+        "latitude": 45.800007
+      }
+    ],
+    "HT": [
+      {
+        "name": "太子港",
+        "englishName": "Port-au-Prince",
+        "longitude": -72.33798,
+        "latitude": 18.54297
+      }
+    ],
+    "HU": [
+      {
+        "name": "布达佩斯",
+        "englishName": "Budapest",
+        "longitude": 19.081375,
+        "latitude": 47.501952
+      }
+    ],
+    "ID": [
+      {
+        "name": "雅加达",
+        "englishName": "Jakarta",
+        "longitude": 106.827492,
+        "latitude": -6.172472
+      }
+    ],
+    "IE": [
+      {
+        "name": "都柏林",
+        "englishName": "Dublin",
+        "longitude": -6.25698,
+        "latitude": 53.346731
+      }
+    ],
+    "IL": [
+      {
+        "name": "耶路撒冷",
+        "englishName": "Jerusalem",
+        "longitude": 35.206626,
+        "latitude": 31.778408
+      }
+    ],
+    "IN": [
+      {
+        "name": "新德里",
+        "englishName": "New Delhi",
+        "longitude": 77.19998,
+        "latitude": 28.600023
+      }
+    ],
+    "IQ": [
+      {
+        "name": "巴格达",
+        "englishName": "Baghdad",
+        "longitude": 44.391923,
+        "latitude": 33.340594
+      }
+    ],
+    "IR": [
+      {
+        "name": "德黑兰",
+        "englishName": "Tehran",
+        "longitude": 51.422398,
+        "latitude": 35.673889
+      }
+    ],
+    "IS": [
+      {
+        "name": "雷克雅未克",
+        "englishName": "Reykjavík",
+        "longitude": -21.936546,
+        "latitude": 64.143459
+      }
+    ],
+    "IT": [
+      {
+        "name": "罗马",
+        "englishName": "Rome",
+        "longitude": 12.481313,
+        "latitude": 41.897902
+      }
+    ],
+    "JM": [
+      {
+        "name": "京斯敦",
+        "englishName": "Kingston",
+        "longitude": -76.767434,
+        "latitude": 17.977077
+      }
+    ],
+    "JO": [
+      {
+        "name": "安曼",
+        "englishName": "Amman",
+        "longitude": 35.931354,
+        "latitude": 31.951971
+      }
+    ],
+    "JP": [
+      {
+        "name": "东京",
+        "englishName": "Tokyo",
+        "longitude": 139.749462,
+        "latitude": 35.686963
+      }
+    ],
+    "KE": [
+      {
+        "name": "内罗毕",
+        "englishName": "Nairobi",
+        "longitude": 36.814711,
+        "latitude": -1.281401
+      }
+    ],
+    "KG": [
+      {
+        "name": "比什凯克",
+        "englishName": "Bishkek",
+        "longitude": 74.583258,
+        "latitude": 42.875025
+      }
+    ],
+    "KH": [
+      {
+        "name": "金边",
+        "englishName": "Phnom Penh",
+        "longitude": 104.914689,
+        "latitude": 11.551976
+      }
+    ],
+    "KP": [
+      {
+        "name": "平壤",
+        "englishName": "Pyongyang",
+        "longitude": 125.752745,
+        "latitude": 39.021385
+      }
+    ],
+    "KR": [
+      {
+        "name": "首尔",
+        "englishName": "Seoul",
+        "longitude": 126.997785,
+        "latitude": 37.568295
+      }
+    ],
+    "KW": [
+      {
+        "name": "科威特城",
+        "englishName": "Kuwait City",
+        "longitude": 47.976355,
+        "latitude": 29.371664
+      }
+    ],
+    "KZ": [
+      {
+        "name": "努尔苏丹",
+        "englishName": "Nur-Sultan",
+        "longitude": 71.427774,
+        "latitude": 51.181125
+      }
+    ],
+    "LA": [
+      {
+        "name": "万象",
+        "englishName": "Vientiane",
+        "longitude": 102.59998,
+        "latitude": 17.966693
+      }
+    ],
+    "LB": [
+      {
+        "name": "贝鲁特",
+        "englishName": "Beirut",
+        "longitude": 35.507762,
+        "latitude": 33.873921
+      }
+    ],
+    "LK": [
+      {
+        "name": "斯里贾亚瓦德纳普拉科特",
+        "englishName": "Sri Jayawardenepura Kotte",
+        "longitude": 79.949993,
+        "latitude": 6.900004
+      },
+      {
+        "name": "科伦坡",
+        "englishName": "Colombo",
+        "longitude": 79.857751,
+        "latitude": 6.931966
+      }
+    ],
+    "LR": [
+      {
+        "name": "蒙罗维亚",
+        "englishName": "Monrovia",
+        "longitude": -10.79966,
+        "latitude": 6.314582
+      }
+    ],
+    "LS": [
+      {
+        "name": "马塞卢",
+        "englishName": "Maseru",
+        "longitude": 27.483273,
+        "latitude": -29.316674
+      }
+    ],
+    "LT": [
+      {
+        "name": "维尔纽斯",
+        "englishName": "Vilnius",
+        "longitude": 25.316635,
+        "latitude": 54.683366
+      }
+    ],
+    "LU": [
+      {
+        "name": "卢森堡",
+        "englishName": "Luxembourg",
+        "longitude": 6.130003,
+        "latitude": 49.61166
+      }
+    ],
+    "LV": [
+      {
+        "name": "里加",
+        "englishName": "Riga",
+        "longitude": 24.099965,
+        "latitude": 56.950024
+      }
+    ],
+    "LY": [
+      {
+        "name": "的黎波里",
+        "englishName": "Tripoli",
+        "longitude": 13.180012,
+        "latitude": 32.8925
+      }
+    ],
+    "MA": [
+      {
+        "name": "拉巴特",
+        "englishName": "Rabat",
+        "longitude": -6.836408,
+        "latitude": 34.025307
+      }
+    ],
+    "MD": [
+      {
+        "name": "基希讷乌",
+        "englishName": "Chișinău",
+        "longitude": 28.857711,
+        "latitude": 47.005024
+      }
+    ],
+    "ME": [
+      {
+        "name": "波德戈里察",
+        "englishName": "Podgorica",
+        "longitude": 19.266307,
+        "latitude": 42.465972
+      }
+    ],
+    "MG": [
+      {
+        "name": "塔那那利佛",
+        "englishName": "Antananarivo",
+        "longitude": 47.514678,
+        "latitude": -18.914691
+      }
+    ],
+    "MK": [
+      {
+        "name": "斯科普里",
+        "englishName": "Skopje",
+        "longitude": 21.433461,
+        "latitude": 42.000006
+      }
+    ],
+    "ML": [
+      {
+        "name": "巴马科",
+        "englishName": "Bamako",
+        "longitude": -8.001985,
+        "latitude": 12.65196
+      }
+    ],
+    "MM": [
+      {
+        "name": "奈比多",
+        "englishName": "Naypyidaw",
+        "longitude": 96.116673,
+        "latitude": 19.768503
+      }
+    ],
+    "MN": [
+      {
+        "name": "乌兰巴托",
+        "englishName": "Ulaanbaatar",
+        "longitude": 106.91467,
+        "latitude": 47.918619
+      }
+    ],
+    "MR": [
+      {
+        "name": "努瓦克肖特",
+        "englishName": "Nouakchott",
+        "longitude": -15.97534,
+        "latitude": 18.086427
+      }
+    ],
+    "MW": [
+      {
+        "name": "利隆圭",
+        "englishName": "Lilongwe",
+        "longitude": 33.783302,
+        "latitude": -13.983295
+      }
+    ],
+    "MX": [
+      {
+        "name": "墨西哥城",
+        "englishName": "Mexico City",
+        "longitude": -99.132934,
+        "latitude": 19.444388
+      }
+    ],
+    "MY": [
+      {
+        "name": "吉隆坡",
+        "englishName": "Kuala Lumpur",
+        "longitude": 101.688699,
+        "latitude": 3.139797
+      }
+    ],
+    "MZ": [
+      {
+        "name": "马普托",
+        "englishName": "Maputo",
+        "longitude": 32.587217,
+        "latitude": -25.953332
+      }
+    ],
+    "NA": [
+      {
+        "name": "温得和克",
+        "englishName": "Windhoek",
+        "longitude": 17.083546,
+        "latitude": -22.570006
+      }
+    ],
+    "NC": [
+      {
+        "name": "努美阿",
+        "englishName": "Nouméa",
+        "longitude": 166.444285,
+        "latitude": -22.262528
+      }
+    ],
+    "NE": [
+      {
+        "name": "尼亚美",
+        "englishName": "Niamey",
+        "longitude": 2.11471,
+        "latitude": 13.518652
+      }
+    ],
+    "NG": [
+      {
+        "name": "阿布贾",
+        "englishName": "Abuja",
+        "longitude": 7.489505,
+        "latitude": 9.05462
+      }
+    ],
+    "NI": [
+      {
+        "name": "馬拿瓜",
+        "englishName": "Managua",
+        "longitude": -86.270437,
+        "latitude": 12.154962
+      }
+    ],
+    "NL": [
+      {
+        "name": "阿姆斯特丹",
+        "englishName": "Amsterdam",
+        "longitude": 4.914694,
+        "latitude": 52.351914
+      }
+    ],
+    "NO": [
+      {
+        "name": "奥斯陆",
+        "englishName": "Oslo",
+        "longitude": 10.748033,
+        "latitude": 59.918636
+      }
+    ],
+    "NP": [
+      {
+        "name": "加德满都",
+        "englishName": "Kathmandu",
+        "longitude": 85.314696,
+        "latitude": 27.718638
+      }
+    ],
+    "NZ": [
+      {
+        "name": "惠灵顿",
+        "englishName": "Wellington",
+        "longitude": 174.777201,
+        "latitude": -41.292068
+      }
+    ],
+    "OM": [
+      {
+        "name": "马斯喀特",
+        "englishName": "Muscat",
+        "longitude": 58.378311,
+        "latitude": 23.585179
+      }
+    ],
+    "PA": [
+      {
+        "name": "巴拿马城",
+        "englishName": "Panama City",
+        "longitude": -79.534983,
+        "latitude": 8.969963
+      }
+    ],
+    "PE": [
+      {
+        "name": "利马",
+        "englishName": "Lima",
+        "longitude": -77.052008,
+        "latitude": -12.046067
+      }
+    ],
+    "PG": [
+      {
+        "name": "莫尔兹比港",
+        "englishName": "Port Moresby",
+        "longitude": 147.192504,
+        "latitude": -9.464708
+      }
+    ],
+    "PH": [
+      {
+        "name": "马尼拉",
+        "englishName": "Manila",
+        "longitude": 120.980271,
+        "latitude": 14.606105
+      }
+    ],
+    "PK": [
+      {
+        "name": "伊斯兰堡",
+        "englishName": "Islamabad",
+        "longitude": 73.08063,
+        "latitude": 33.689368
+      }
+    ],
+    "PL": [
+      {
+        "name": "华沙",
+        "englishName": "Warsaw",
+        "longitude": 21.005347,
+        "latitude": 52.230872
+      }
+    ],
+    "PR": [
+      {
+        "name": "圣胡安",
+        "englishName": "San Juan",
+        "longitude": -66.129979,
+        "latitude": 18.440023
+      }
+    ],
+    "PS": [
+      {
+        "name": "拉姆安拉",
+        "englishName": "Ramallah",
+        "longitude": 35.206209,
+        "latitude": 31.902945
+      }
+    ],
+    "PT": [
+      {
+        "name": "里斯本",
+        "englishName": "Lisbon",
+        "longitude": -9.146812,
+        "latitude": 38.724669
+      }
+    ],
+    "PY": [
+      {
+        "name": "亚松森",
+        "englishName": "Asunción",
+        "longitude": -57.625834,
+        "latitude": -25.290671
+      }
+    ],
+    "QA": [
+      {
+        "name": "多哈",
+        "englishName": "Doha",
+        "longitude": 51.532968,
+        "latitude": 25.286556
+      }
+    ],
+    "RO": [
+      {
+        "name": "布加勒斯特",
+        "englishName": "Bucharest",
+        "longitude": 26.098001,
+        "latitude": 44.435318
+      }
+    ],
+    "RS": [
+      {
+        "name": "贝尔格莱德",
+        "englishName": "Belgrade",
+        "longitude": 20.466045,
+        "latitude": 44.820591
+      }
+    ],
+    "RU": [
+      {
+        "name": "莫斯科",
+        "englishName": "Moscow",
+        "longitude": 37.613577,
+        "latitude": 55.75411
+      }
+    ],
+    "RW": [
+      {
+        "name": "吉佳利",
+        "englishName": "Kigali",
+        "longitude": 30.058586,
+        "latitude": -1.951644
+      }
+    ],
+    "SA": [
+      {
+        "name": "利雅德",
+        "englishName": "Riyadh",
+        "longitude": 46.720487,
+        "latitude": 24.634497
+      }
+    ],
+    "SB": [
+      {
+        "name": "霍尼亚拉",
+        "englishName": "Honiara",
+        "longitude": 159.949766,
+        "latitude": -9.437994
+      }
+    ],
+    "SD": [
+      {
+        "name": "喀土穆",
+        "englishName": "Khartoum",
+        "longitude": 32.532233,
+        "latitude": 15.590024
+      }
+    ],
+    "SE": [
+      {
+        "name": "斯德哥尔摩",
+        "englishName": "Stockholm",
+        "longitude": 18.0663,
+        "latitude": 59.324127
+      }
+    ],
+    "SI": [
+      {
+        "name": "卢布尔雅那",
+        "englishName": "Ljubljana",
+        "longitude": 14.514969,
+        "latitude": 46.055288
+      }
+    ],
+    "SK": [
+      {
+        "name": "布拉迪斯拉发",
+        "englishName": "Bratislava",
+        "longitude": 17.116981,
+        "latitude": 48.150018
+      }
+    ],
+    "SL": [
+      {
+        "name": "弗里敦",
+        "englishName": "Freetown",
+        "longitude": -13.236162,
+        "latitude": 8.471957
+      }
+    ],
+    "SN": [
+      {
+        "name": "达喀尔",
+        "englishName": "Dakar",
+        "longitude": -17.475076,
+        "latitude": 14.717778
+      }
+    ],
+    "SO": [
+      {
+        "name": "摩加迪休",
+        "englishName": "Mogadishu",
+        "longitude": 45.364732,
+        "latitude": 2.068627
+      }
+    ],
+    "SR": [
+      {
+        "name": "帕拉马里博",
+        "englishName": "Paramaribo",
+        "longitude": -55.167031,
+        "latitude": 5.83503
+      }
+    ],
+    "SS": [
+      {
+        "name": "朱巴",
+        "englishName": "Juba",
+        "longitude": 31.580026,
+        "latitude": 4.829975
+      }
+    ],
+    "SV": [
+      {
+        "name": "圣萨尔瓦多",
+        "englishName": "San Salvador",
+        "longitude": -89.215576,
+        "latitude": 13.70328
+      }
+    ],
+    "SY": [
+      {
+        "name": "大马士革",
+        "englishName": "Damascus",
+        "longitude": 36.29805,
+        "latitude": 33.50198
+      }
+    ],
+    "SZ": [
+      {
+        "name": "墨巴本",
+        "englishName": "Mbabane",
+        "longitude": 31.133335,
+        "latitude": -26.316651
+      },
+      {
+        "name": "洛班巴",
+        "englishName": "Lobamba",
+        "longitude": 31.199997,
+        "latitude": -26.466667
+      }
+    ],
+    "TD": [
+      {
+        "name": "恩贾梅纳",
+        "englishName": "N'Djamena",
+        "longitude": 15.047202,
+        "latitude": 12.115042
+      }
+    ],
+    "TF": [
+      {
+        "name": "法兰西港",
+        "englishName": "Port-aux-Français",
+        "longitude": 70.2167,
+        "latitude": -49.35
+      }
+    ],
+    "TG": [
+      {
+        "name": "洛美",
+        "englishName": "Lomé",
+        "longitude": 1.220811,
+        "latitude": 6.133883
+      }
+    ],
+    "TH": [
+      {
+        "name": "曼谷",
+        "englishName": "Bangkok",
+        "longitude": 100.514699,
+        "latitude": 13.751945
+      }
+    ],
+    "TJ": [
+      {
+        "name": "杜尚别",
+        "englishName": "Dushanbe",
+        "longitude": 68.773879,
+        "latitude": 38.560035
+      }
+    ],
+    "TL": [
+      {
+        "name": "帝力",
+        "englishName": "Dili",
+        "longitude": 125.579456,
+        "latitude": -8.559388
+      }
+    ],
+    "TM": [
+      {
+        "name": "阿什哈巴德",
+        "englishName": "Ashgabat",
+        "longitude": 58.383299,
+        "latitude": 37.949995
+      }
+    ],
+    "TN": [
+      {
+        "name": "突尼斯",
+        "englishName": "Tunis",
+        "longitude": 10.179678,
+        "latitude": 36.802778
+      }
+    ],
+    "TR": [
+      {
+        "name": "安卡拉",
+        "englishName": "Ankara",
+        "longitude": 32.862446,
+        "latitude": 39.929184
+      }
+    ],
+    "TT": [
+      {
+        "name": "西班牙港",
+        "englishName": "Port-of-Spain",
+        "longitude": -61.517031,
+        "latitude": 10.651997
+      }
+    ],
+    "TZ": [
+      {
+        "name": "多多马",
+        "englishName": "Dodoma",
+        "longitude": 35.750004,
+        "latitude": -6.183306
+      }
+    ],
+    "UA": [
+      {
+        "name": "基辅",
+        "englishName": "Kyiv",
+        "longitude": 30.514682,
+        "latitude": 50.435313
+      }
+    ],
+    "UG": [
+      {
+        "name": "坎帕拉",
+        "englishName": "Kampala",
+        "longitude": 32.581378,
+        "latitude": 0.318605
+      }
+    ],
+    "US": [
+      {
+        "name": "华盛顿哥伦比亚特区",
+        "englishName": "Washington,  D.C.",
+        "longitude": -77.011364,
+        "latitude": 38.901495
+      }
+    ],
+    "UY": [
+      {
+        "name": "蒙得维的亚",
+        "englishName": "Montevideo",
+        "longitude": -56.186823,
+        "latitude": -34.905376
+      }
+    ],
+    "UZ": [
+      {
+        "name": "塔什干",
+        "englishName": "Tashkent",
+        "longitude": 69.268823,
+        "latitude": 41.303828
+      }
+    ],
+    "VE": [
+      {
+        "name": "加拉加斯",
+        "englishName": "Caracas",
+        "longitude": -66.918983,
+        "latitude": 10.502944
+      }
+    ],
+    "VN": [
+      {
+        "name": "河内",
+        "englishName": "Hanoi",
+        "longitude": 105.848068,
+        "latitude": 21.035273
+      }
+    ],
+    "VU": [
+      {
+        "name": "维拉港",
+        "englishName": "Port Vila",
+        "longitude": 168.316641,
+        "latitude": -17.73335
+      }
+    ],
+    "XK": [
+      {
+        "name": "普里什蒂纳",
+        "englishName": "Pristina",
+        "longitude": 21.165984,
+        "latitude": 42.66671
+      }
+    ],
+    "YE": [
+      {
+        "name": "萨那",
+        "englishName": "Sanaa",
+        "longitude": 44.204648,
+        "latitude": 15.356679
+      }
+    ],
+    "ZA": [
+      {
+        "name": "比勒陀利亚",
+        "englishName": "Pretoria",
+        "longitude": 28.227483,
+        "latitude": -25.704975
+      },
+      {
+        "name": "开普敦",
+        "englishName": "Cape Town",
+        "longitude": 18.433042,
+        "latitude": -33.918065
+      },
+      {
+        "name": "布隆方丹",
+        "englishName": "Bloemfontein",
+        "longitude": 26.229913,
+        "latitude": -29.119994
+      }
+    ],
+    "ZM": [
+      {
+        "name": "卢萨卡",
+        "englishName": "Lusaka",
+        "longitude": 28.281382,
+        "latitude": -15.414698
+      }
+    ],
+    "ZW": [
+      {
+        "name": "哈拉雷",
+        "englishName": "Harare",
+        "longitude": 31.042764,
+        "latitude": -17.815844
+      }
+    ]
+  }
+}

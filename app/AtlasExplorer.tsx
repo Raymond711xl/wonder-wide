@@ -32,7 +32,7 @@ import {
   useRef,
   useState,
 } from "react";
-import type { FormEvent } from "react";
+import type { FormEvent, PointerEvent as ReactPointerEvent } from "react";
 import StaticAtlasMap, {
   type CountryMetric,
   type StaticAtlasMapHandle,
@@ -85,6 +85,9 @@ type NominatimResult = {
   display_name: string;
   name?: string;
   type: string;
+  addresstype?: string;
+  category?: string;
+  place_rank?: number;
   lat: string;
   lon: string;
   boundingbox?: [string, string, string, string];
@@ -108,6 +111,8 @@ type OverpassElement = {
 };
 
 type AtlasScope = "world" | "china";
+type MobilePanelPosition = "docked" | "expanded" | "collapsed";
+type MobilePanelGestureZone = "records" | "summary" | "grip";
 
 type ScopedTitleIds = Record<AtlasScope, string | null>;
 type ScopedFeaturedTitleIds = Record<AtlasScope, string[]>;
@@ -301,13 +306,16 @@ function landmarksForCity(city: CityCandidate) {
 
 function normalizeCityResult(result: NominatimResult): CityCandidate | null {
   const address = result.address ?? {};
+  if (isCountryLevelResult(result)) return null;
+  const localityType = String(result.addresstype ?? result.type).toLowerCase();
   const cityName =
     address.city ??
     address.town ??
     address.village ??
     address.municipality ??
-    address.city_district ??
-    result.name;
+    (["city", "town", "village", "municipality"].includes(localityType)
+      ? result.name
+      : undefined);
   const sourceCountry = address.country;
   const sourceCountryCode = address.country_code?.toUpperCase();
   if (!cityName || !sourceCountry || !sourceCountryCode) return null;
@@ -350,6 +358,30 @@ function normalizeCityResult(result: NominatimResult): CityCandidate | null {
     bbox,
     geometry,
   };
+}
+
+function isCountryLevelResult(result: NominatimResult) {
+  const address = result.address ?? {};
+  const resultType = String(
+    result.addresstype ?? result.type ?? "",
+  ).toLowerCase();
+  if (resultType === "country") return true;
+
+  const hasLocality = Boolean(
+    address.city ||
+      address.town ||
+      address.village ||
+      address.municipality,
+  );
+  const comparable = (value: string | undefined) =>
+    String(value ?? "")
+      .trim()
+      .toLocaleLowerCase();
+  return (
+    !hasLocality &&
+    Number(result.place_rank ?? Number.POSITIVE_INFINITY) <= 6 &&
+    comparable(result.name) === comparable(address.country)
+  );
 }
 
 function normalizeLandmarkResult(result: NominatimResult): LandmarkOption {
@@ -547,6 +579,12 @@ export default function AtlasExplorer() {
   const [landmarkError, setLandmarkError] = useState("");
   const [toast, setToast] = useState("");
   const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
+  const [mobilePanelPosition, setMobilePanelPosition] =
+    useState<MobilePanelPosition>("docked");
+  const mobilePanelGestureRef = useRef<{
+    startY: number;
+    zone: MobilePanelGestureZone;
+  } | null>(null);
   const [countryRegions, setCountryRegions] = useState<CountryRegionMap>({
     ...COUNTRY_REGION_FALLBACKS,
   });
@@ -786,6 +824,7 @@ export default function AtlasExplorer() {
     setEditingVisitId(null);
     setSearchResults([]);
     setSearchError("");
+    setMobilePanelPosition("docked");
   }, []);
 
   const loadLandmarkRecommendations = useCallback(
@@ -1065,15 +1104,6 @@ export default function AtlasExplorer() {
         polygon_threshold: "0.01",
         "accept-language": "zh-CN,zh,en",
       });
-      if (activeCountry?.code) {
-        params.set(
-          "countrycodes",
-          activeCountry.code === "CN"
-            ? "cn,tw"
-            : activeCountry.code.toLowerCase(),
-        );
-      }
-
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?${params.toString()}`,
         { headers: { Accept: "application/json" } },
@@ -1089,7 +1119,11 @@ export default function AtlasExplorer() {
       const normalized = [...unique.values()].slice(0, 6);
       setSearchResults(normalized);
       if (normalized.length === 0) {
-        setSearchError("没有找到城市，换个名字再搜一次吧。");
+        setSearchError(
+          rawResults.some(isCountryLevelResult)
+            ? "国家不能直接生成打卡记录，请继续搜索并选择一座具体城市。"
+            : "没有找到城市，换个名字再搜一次吧。",
+        );
       }
     } catch {
       setSearchError("城市搜索暂时走丢了，请稍后再试。");
@@ -1251,6 +1285,7 @@ export default function AtlasExplorer() {
     setQuery("");
     setSearchResults([]);
     setSearchError("");
+    setMobilePanelPosition("docked");
     window.requestAnimationFrame(() => {
       if (nextScope === "china") {
         mapRef.current?.focusCountry("CN");
@@ -1324,8 +1359,65 @@ export default function AtlasExplorer() {
     showToast(isSelected ? `已从海报移除「${title}」` : `已把「${title}」加入海报`);
   }
 
+  function handleMobilePanelPointerStart(
+    event: ReactPointerEvent<HTMLElement>,
+  ) {
+    const target = event.target instanceof Element ? event.target : null;
+    const zone: MobilePanelGestureZone = target?.closest(
+      ".atlas-v2-panel-section",
+    )
+      ? "records"
+      : target?.closest(".atlas-v2-mobile-panel-grip")
+        ? "grip"
+        : "summary";
+    mobilePanelGestureRef.current = { startY: event.clientY, zone };
+  }
+
+  function handleMobilePanelPointerEnd(
+    event: ReactPointerEvent<HTMLElement>,
+  ) {
+    const gesture = mobilePanelGestureRef.current;
+    mobilePanelGestureRef.current = null;
+    if (!gesture) return;
+    const deltaY = event.clientY - gesture.startY;
+    if (Math.abs(deltaY) < 34) return;
+
+    if (deltaY < 0) {
+      setMobilePanelPosition((current) =>
+        gesture.zone === "records"
+          ? "expanded"
+          : current === "collapsed"
+            ? "docked"
+            : current,
+      );
+      return;
+    }
+
+    setMobilePanelPosition((current) =>
+      gesture.zone === "summary"
+        ? "collapsed"
+        : current === "expanded"
+          ? "docked"
+          : "collapsed",
+    );
+  }
+
+  function cycleMobilePanelPosition() {
+    setMobilePanelPosition((current) =>
+      current === "collapsed"
+        ? "docked"
+        : current === "docked"
+          ? "expanded"
+          : "docked",
+    );
+  }
+
   return (
-    <main className="atlas-v2-shell" data-scope={scope}>
+    <main
+      className="atlas-v2-shell"
+      data-scope={scope}
+      data-mobile-panel={mobilePanelPosition}
+    >
       <StaticAtlasMap
         ref={mapRef}
         visits={visits}
@@ -1414,13 +1506,7 @@ export default function AtlasExplorer() {
               setQuery(event.target.value);
               setSearchError("");
             }}
-            placeholder={
-              scope === "china"
-                ? "搜索中国城市，例如：上海、成都"
-                : activeCountry
-                ? `在${activeCountry.name}搜索城市`
-                : "搜索城市，例如：上海、巴黎"
-            }
+            placeholder="全局搜索城市，例如：上海、巴黎"
             aria-label="搜索城市"
           />
           {query && !searching ? (
@@ -1492,8 +1578,31 @@ export default function AtlasExplorer() {
       ) : null}
 
       <aside
-        className={`atlas-v2-panel ${mobilePanelOpen ? "is-open" : ""}`}
+        className={`atlas-v2-panel ${mobilePanelOpen ? "is-open" : ""} is-mobile-${mobilePanelPosition}`}
+        data-mobile-position={mobilePanelPosition}
+        onPointerDown={handleMobilePanelPointerStart}
+        onPointerUp={handleMobilePanelPointerEnd}
+        onPointerCancel={() => {
+          mobilePanelGestureRef.current = null;
+        }}
       >
+        <button
+          type="button"
+          className="atlas-v2-mobile-panel-grip"
+          onClick={cycleMobilePanelPosition}
+          aria-label={
+            mobilePanelPosition === "collapsed"
+              ? "展开足迹信息"
+              : mobilePanelPosition === "expanded"
+                ? "收回足迹信息"
+                : "展开打卡记录"
+          }
+        >
+          <span aria-hidden="true" />
+          <small>
+            {mobilePanelPosition === "collapsed" ? "上滑查看足迹" : "拖动"}
+          </small>
+        </button>
         <div className="atlas-v2-panel-handle" aria-hidden="true" />
         <div className="atlas-v2-panel-intro">
           <span className="atlas-v2-eyebrow">
@@ -1581,7 +1690,14 @@ export default function AtlasExplorer() {
           </section>
         ) : null}
 
-        <section className="atlas-v2-panel-section">
+        <section
+          className="atlas-v2-panel-section"
+          onScroll={(event) => {
+            if (event.currentTarget.scrollTop > 4) {
+              setMobilePanelPosition("expanded");
+            }
+          }}
+        >
           <div className="atlas-v2-section-title">
             <div>
               <span>打卡记录</span>

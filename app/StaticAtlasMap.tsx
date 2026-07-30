@@ -123,6 +123,22 @@ type CityCatalog = {
   counts: Record<string, number>;
 };
 
+type CapitalCatalog = {
+  source: string;
+  sourceUrl: string;
+  attribution: string;
+  countryCount: number;
+  capitals: Record<
+    string,
+    Array<{
+      name: string;
+      englishName: string;
+      longitude: number;
+      latitude: number;
+    }>
+  >;
+};
+
 export type CountryMetric = {
   code: string;
   name: string;
@@ -563,6 +579,8 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
   ) {
     const [countries, setCountries] = useState<ProjectedCountry[]>([]);
     const [cityCatalog, setCityCatalog] = useState<CityCatalog | null>(null);
+    const [capitalCatalog, setCapitalCatalog] =
+      useState<CapitalCatalog | null>(null);
     const [subdivisions, setSubdivisions] = useState<ProjectedSubdivision[]>(
       [],
     );
@@ -641,6 +659,24 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
         })
         .catch(() => {
           if (!cancelled) setLoadError(true);
+        });
+      return () => {
+        cancelled = true;
+      };
+    }, []);
+
+    useEffect(() => {
+      let cancelled = false;
+      fetch("/data/world-capitals.json")
+        .then((response) => {
+          if (!response.ok) throw new Error("Capital catalog unavailable");
+          return response.json() as Promise<CapitalCatalog>;
+        })
+        .then((catalog) => {
+          if (!cancelled) setCapitalCatalog(catalog);
+        })
+        .catch(() => {
+          if (!cancelled) setCapitalCatalog(null);
         });
       return () => {
         cancelled = true;
@@ -748,17 +784,40 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
       [cityAggregates],
     );
 
-    const countrySuggestions = useMemo(
-      () =>
-        activeCountry
-          ? featuredCities.filter(
-              (city) =>
-                city.countryCode === activeCountry.code &&
-                !visitedCityKeys.has(visitKey(city)),
-            )
-          : [],
-      [activeCountry, featuredCities, visitedCityKeys],
-    );
+    const countrySuggestions = useMemo(() => {
+      if (!activeCountry) return [];
+      if (cityAggregates.length === 0) {
+        return (capitalCatalog?.capitals[activeCountry.code] ?? []).map(
+          (capital, index): CityCandidate => ({
+            id: `capital-${activeCountry.code}-${index}`,
+            name: capital.name,
+            country: activeCountry.name,
+            countryCode: activeCountry.code,
+            region: "首都",
+            subtitle: `首都 · ${activeCountry.name}`,
+            longitude: capital.longitude,
+            latitude: capital.latitude,
+            bbox: [
+              capital.longitude - 0.18,
+              capital.latitude - 0.14,
+              capital.longitude + 0.18,
+              capital.latitude + 0.14,
+            ],
+          }),
+        );
+      }
+      return featuredCities.filter(
+        (city) =>
+          city.countryCode === activeCountry.code &&
+          !visitedCityKeys.has(visitKey(city)),
+      );
+    }, [
+      activeCountry,
+      capitalCatalog,
+      cityAggregates.length,
+      featuredCities,
+      visitedCityKeys,
+    ]);
 
     const activeCatalogCities = activeCountry
       ? cityCatalog?.counts[activeCountry.code] ?? 0
@@ -852,11 +911,14 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
       const suggestionLabels: CountryLabelItem[] = countrySuggestions.map(
         (city) => {
           const point = projectCoordinate(city.longitude, city.latitude);
+          const label = city.id.startsWith("capital-")
+            ? `首都 · ${city.name}`
+            : city.name;
           return {
             key: `suggestion:${city.id}`,
             anchorX: point.x,
             anchorY: point.y,
-            width: Math.max(52, city.name.length * 12 + 20),
+            width: Math.max(52, label.length * 12 + 20),
             height: 26,
           };
         },
@@ -1259,9 +1321,11 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
               {countrySuggestions.map((city) => {
                 const point = projectCoordinate(city.longitude, city.latitude);
                 const activate = () => onCityOpen(city);
+                const isCapital = city.id.startsWith("capital-");
+                const label = isCapital ? `首都 · ${city.name}` : city.name;
                 const labelWidth = Math.max(
                   52,
-                  city.name.length * 12 + 20,
+                  label.length * 12 + 20,
                 );
                 const placement =
                   countryLabelPlacements.get(`suggestion:${city.id}`) ?? {
@@ -1272,15 +1336,18 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
                 return (
                   <g
                     key={city.id}
-                    className="static-city-marker is-suggestion"
+                    className={`static-city-marker is-suggestion ${isCapital ? "is-capital" : ""}`}
                     transform={`translate(${point.x} ${point.y}) scale(${markerScale})`}
                     role="button"
                     tabIndex={0}
-                    aria-label={`添加城市 ${city.name}`}
+                    aria-label={`${isCapital ? "添加首都" : "添加城市"} ${city.name}`}
                     onClick={activate}
                     onKeyDown={(event) => keyboardActivate(event, activate)}
                   >
                     <circle className="city-suggestion-dot" r="4.5" />
+                    {isCapital ? (
+                      <circle className="city-capital-ring" r="8.5" />
+                    ) : null}
                     <line
                       x1={placement.lineX1}
                       y1={placement.lineY1}
@@ -1300,7 +1367,7 @@ const StaticAtlasMap = forwardRef<StaticAtlasMapHandle, StaticAtlasMapProps>(
                       y={placement.y + 17}
                       className="city-suggestion-name"
                     >
-                      {city.name}
+                      {label}
                     </text>
                   </g>
                 );

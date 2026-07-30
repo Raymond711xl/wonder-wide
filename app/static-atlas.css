@@ -4164,3 +4164,139 @@
     bottom: calc(48dvh + 18px);
   }
 }
+
+/* Complete capital hints and the portrait phone's three-position info sheet. */
+.atlas-v2-mobile-panel-grip {
+  display: none;
+}
+
+.city-capital-ring {
+  fill: none;
+  stroke: rgba(91, 86, 79, 0.72);
+  stroke-width: 1.1;
+  stroke-dasharray: 2 2;
+  pointer-events: none;
+}
+
+.static-city-marker.is-capital .city-suggestion-dot {
+  fill: #f1eee7;
+  stroke: #77726b;
+}
+
+.static-city-marker.is-capital .city-suggestion-card {
+  fill: rgba(247, 244, 237, 0.94);
+  stroke: rgba(87, 82, 78, 0.46);
+}
+
+.static-atlas-map[data-map-mode="country"]
+  .static-city-marker.is-suggestion
+  .city-suggestion-card,
+.static-atlas-map[data-map-mode="country"]
+  .static-city-marker.is-suggestion
+  .city-suggestion-name {
+  pointer-events: auto;
+}
+
+.atlas-v2-panel-section {
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+
+@media (max-width: 880px) and (orientation: portrait) {
+  .atlas-v2-panel,
+  .atlas-v2-panel.is-open {
+    top: 52dvh;
+    overflow: visible;
+    transition:
+      top 220ms cubic-bezier(0.22, 0.8, 0.28, 1),
+      transform 210ms ease;
+    will-change: top;
+  }
+
+  .atlas-v2-panel.is-mobile-expanded {
+    top: 210px;
+  }
+
+  .atlas-v2-panel.is-mobile-collapsed {
+    top: calc(100dvh - 64px);
+  }
+
+  .atlas-v2-shell[data-mobile-panel="expanded"] .static-atlas-map,
+  .atlas-v2-shell[data-mobile-panel="collapsed"] .static-atlas-map {
+    bottom: 72px;
+  }
+
+  .atlas-v2-mobile-panel-grip {
+    position: absolute;
+    z-index: 2;
+    top: -15px;
+    left: 50%;
+    width: 72px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 1px solid rgba(33, 20, 63, 0.18);
+    border-radius: 999px;
+    color: var(--ink);
+    background: rgba(255, 249, 237, 0.98);
+    box-shadow: 0 5px 18px rgba(33, 20, 63, 0.12);
+    transform: translateX(-50%);
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+
+  .atlas-v2-mobile-panel-grip > span {
+    width: 34px;
+    height: 4px;
+    border-radius: 999px;
+    background: rgba(33, 20, 63, 0.34);
+  }
+
+  .atlas-v2-mobile-panel-grip small {
+    display: none;
+    font-size: var(--atlas-type-aux);
+    font-weight: 850;
+  }
+
+  .atlas-v2-panel.is-mobile-collapsed
+    > :not(.atlas-v2-mobile-panel-grip) {
+    display: none;
+  }
+
+  .atlas-v2-panel.is-mobile-collapsed .atlas-v2-mobile-panel-grip {
+    top: 9px;
+    width: 158px;
+    height: 42px;
+    gap: 9px;
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .atlas-v2-panel.is-mobile-collapsed
+    .atlas-v2-mobile-panel-grip
+    > span {
+    width: 28px;
+  }
+
+  .atlas-v2-panel.is-mobile-collapsed .atlas-v2-mobile-panel-grip small {
+    display: block;
+  }
+
+  .atlas-v2-roaming-badge,
+  .atlas-v2-stats-section,
+  .atlas-v2-panel-intro {
+    touch-action: pan-y;
+  }
+
+  .static-atlas-map[data-map-mode="country"] .static-atlas-coverage {
+    top: 82px !important;
+    left: 12px;
+  }
+
+  .atlas-v2-shell[data-mobile-panel="collapsed"] .atlas-v2-toast {
+    bottom: 82px;
+  }
+}
