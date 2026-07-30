@@ -4017,3 +4017,106 @@
     width: min(318px, calc(100vw - 72px));
   }
 }
+
+/* Stable familiarity legend anchor: the trigger never moves under the cursor. */
+.atlas-v2-map-legend-anchor {
+  position: absolute;
+  z-index: 25;
+  right: 20px;
+  bottom: 24px;
+  width: 108px;
+  height: 40px;
+}
+
+.atlas-v2-map-legend-anchor .atlas-v2-map-legend,
+.atlas-v2-map-legend-anchor .atlas-v2-map-legend:hover,
+.atlas-v2-map-legend-anchor .atlas-v2-map-legend:focus-visible {
+  right: 0;
+  bottom: 0;
+  width: 108px;
+  height: 40px;
+  min-height: 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 0;
+  padding: 0;
+  opacity: 0.68;
+}
+
+.atlas-v2-map-legend-summary {
+  width: 100%;
+  height: 38px;
+  display: grid;
+  flex: 0 0 38px;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  order: 2;
+  padding: 0 11px;
+  box-sizing: border-box;
+}
+
+.atlas-v2-map-legend-summary > b {
+  height: 18px;
+  display: flex !important;
+  align-items: center;
+  align-self: center;
+  padding: 1px 9px 0 0;
+  box-sizing: border-box;
+  line-height: 17px;
+}
+
+.atlas-v2-map-legend-summary > .atlas-v2-heat-scale {
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+  line-height: 0;
+}
+
+.atlas-v2-map-legend-anchor .atlas-v2-heat-details {
+  width: 330px;
+  min-width: 0;
+  order: 1;
+  box-sizing: border-box;
+}
+
+.atlas-v2-map-legend-anchor:hover .atlas-v2-map-legend,
+.atlas-v2-map-legend-anchor:focus-within .atlas-v2-map-legend {
+  right: 48px;
+  width: 330px;
+  height: auto;
+  min-height: 40px;
+  opacity: 0.96;
+  background: rgba(255, 253, 246, 0.95);
+}
+
+.atlas-v2-map-legend-anchor:hover .atlas-v2-heat-details,
+.atlas-v2-map-legend-anchor:focus-within .atlas-v2-heat-details {
+  max-height: 132px;
+  margin-top: 0;
+  padding: 9px 11px 2px;
+  opacity: 1;
+  visibility: visible;
+}
+
+@media (max-width: 480px) {
+  .atlas-v2-map-legend-anchor {
+    right: 12px;
+    bottom: 18px;
+    width: 106px;
+  }
+
+  .atlas-v2-map-legend-anchor .atlas-v2-map-legend,
+  .atlas-v2-map-legend-anchor .atlas-v2-map-legend:hover,
+  .atlas-v2-map-legend-anchor .atlas-v2-map-legend:focus-visible {
+    width: 106px;
+  }
+
+  .atlas-v2-map-legend-anchor:hover .atlas-v2-map-legend,
+  .atlas-v2-map-legend-anchor:focus-within .atlas-v2-map-legend {
+    right: 48px;
+    width: min(318px, calc(100vw - 72px));
+  }
+}

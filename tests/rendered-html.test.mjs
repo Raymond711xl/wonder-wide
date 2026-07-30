@@ -180,6 +180,13 @@ test("keeps the two-level static atlas as a client boundary", async () => {
   assert.match(staticCss, /static-city-marker:hover \.city-label-card/);
   assert.match(staticCss, /atlas-v2-heat-scale/);
   assert.match(staticCss, /atlas-v2-heat-details/);
+  assert.match(explorer, /atlas-v2-map-legend-anchor/);
+  assert.match(explorer, /atlas-v2-map-legend-summary/);
+  assert.match(staticCss, /Stable familiarity legend anchor/);
+  assert.match(
+    staticCss,
+    /\.atlas-v2-map-legend-anchor:hover \.atlas-v2-map-legend/,
+  );
   assert.match(staticCss, /\.atlas-v2-toast \{\s*z-index: 240;/);
   assert.match(staticCss, /\.atlas-v2-title-poster-mark/);
   assert.match(
