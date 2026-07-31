@@ -42,3 +42,6 @@ next-env.d.ts
 /outputs/
 /work/
 /.firecrawl/
+
+# Each checkout gets its own local Codex Sites project binding.
+/.openai/hosting.json

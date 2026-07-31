@@ -4,7 +4,41 @@
 
 A no-login personal travel-footprint tool for keeping countries, cities, and landmarks on an explorable map, tracking progress, and generating shareable posters.
 
-> The hosted demo is not public yet. Once the repository is published, anyone can run the project on their own computer.
+> The easiest path is to give the live site URL or GitHub URL to an Agent with web and Sites capabilities. You do not need to install or understand the deployment toolchain.
+
+## Start with an Agent
+
+### Option 1: Use the existing site (recommended)
+
+Send this prompt to your Agent:
+
+```text
+Open Wonder Wide and help me start recording my travel footprint:
+https://yuanji-footprint-atlas.wan7ran.chatgpt.site
+```
+
+The Agent opens the current site directly. No deployment is needed.
+
+### Option 2: Deploy your own copy
+
+If you want an independent site address, send this prompt to your Agent:
+
+```text
+Deploy an independent copy of Wonder Wide from this GitHub repository.
+Use Codex Sites, create a new Site on the first deployment, keep it private by default, and do not reuse the repository author's project binding:
+https://github.com/Raymond711xl/wonder-wide
+```
+
+The Agent retrieves the code, validates it, creates an independent Site, publishes it, and returns the final URL. The user does not need to run commands manually.
+
+| What you need | URL to give the Agent |
+| --- | --- |
+| Start immediately without a separate address | [Live site](https://yuanji-footprint-atlas.wan7ran.chatgpt.site) |
+| Own an independent copy | [GitHub repository](https://github.com/Raymond711xl/wonder-wide) |
+
+To share with friends, send them the same live-site URL. A new independent copy stays private by default; ask the Agent to adjust its access when needed.
+
+In both cases, footprints stay in the browser that opened the site. They do not sync automatically across browsers, devices, Agents, or independent deployments.
 
 ## Highlights
 
@@ -15,16 +49,24 @@ A no-login personal travel-footprint tool for keeping countries, cities, and lan
 - Generate a World or China footprint poster and save it as an image.
 - Keep data in the current browser's `localStorage` without registration or sign-in.
 
-## Run locally
+## Data and privacy
 
-Node.js `>=22.13.0` is required.
+- Travel records, title selections, and interface state are stored in browser `localStorage`.
+- The current project does not upload personal footprint data to its own server.
+- City and landmark searches send the search text and map bounds to Nominatim / Overpass.
+- Clearing the site's browser data also removes locally saved footprints. Cloud sync is not included.
+
+<details>
+<summary>Development and technical reference</summary>
+
+### Local development
+
+Maintainers need Node.js `>=22.13.0`.
 
 ```bash
 npm ci
 npm run dev
 ```
-
-Open the local URL printed in the terminal after the development server starts.
 
 To verify and run a production build:
 
@@ -35,22 +77,7 @@ npm run start
 
 Base maps and administrative boundaries ship with the project. City search and landmark recommendations use OpenStreetMap's Nominatim and Overpass services, so those features require an internet connection.
 
-## Self-hosting
-
-The project can run independently on another person's computer and can be deployed to a Cloudflare Workers-compatible hosting environment. The current build uses Vinext and is compatible with Codex Sites. GitHub Pages is not a ready-to-use deployment target for the current build.
-
-Browser data is isolated per visitor: there is no account system and no central database. When you share the site with friends, they create their own footprints in their own browsers and cannot see your local records.
-
-When creating a new Codex Site from a copy of this repository, create a separate Sites project binding for that copy instead of reusing the original author's `project_id`.
-
-## Data and privacy
-
-- Travel records, title selections, and interface state are stored in browser `localStorage`.
-- The current project does not upload personal footprint data to its own server.
-- City and landmark searches send the search text and map bounds to Nominatim / Overpass.
-- Clearing the site's browser data also removes locally saved footprints. Cloud sync is not included.
-
-## Map architecture
+### Map architecture
 
 - Local GeoJSON is projected once at startup; no remote map tiles are loaded.
 - The world map uses an Atlantic seam and unfolds as Europe → Asia / China → the Americas.
@@ -74,7 +101,7 @@ When creating a new Codex Site from a copy of this repository, create a separate
 - Taiwan geometry and city records are grouped under China.
 - Records are stored temporarily in browser `localStorage`; no login is required.
 
-## Map data
+### Map data
 
 - City statistics: GeoNames `cities15000`, CC BY 4.0.
 - Internal country boundaries: geoBoundaries `gbOpen`, CC BY 4.0. China uses 34 ADM1 regions; Spain uses 52 ADM2 regions.
@@ -82,7 +109,7 @@ When creating a new Codex Site from a copy of this repository, create a separate
 - Online city and landmark queries: OpenStreetMap Nominatim / Overpass. Follow the respective service policies and OpenStreetMap attribution requirements.
 - Run `node scripts/normalize-map-data.mjs /path/to/cities15000.txt` to recompress boundaries and regenerate city statistics.
 
-## Project structure
+### Project structure
 
 | Path | Purpose |
 | --- | --- |
@@ -92,14 +119,17 @@ When creating a new Codex Site from a copy of this repository, create a separate
 | `app/roaming-titles.ts` | World and China travel-title rules |
 | `public/data/` | Bundled maps, boundaries, and city statistics |
 | `tests/` | Regression tests for build output and core interactions |
+| `AGENTS.md` | Agent usage, validation, and independent deployment rules |
 
-## Verification
+### Verification
 
 ```bash
 npm run lint
 npm test
 ```
 
+</details>
+
 ## License status
 
-No open-source license has been selected yet. Publishing the repository lets others inspect the source; allowing unrestricted copying, modification, and redeployment requires an explicit license. MIT License is a common default for a personal project of this kind.
+No open-source license has been selected yet. The repository is available for inspection, hands-on use, and personal deployments authorized by the author. Unrestricted copying, modification, and redistribution still require an explicit license. MIT License is a common default for a personal project of this kind.
