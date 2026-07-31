@@ -4,9 +4,37 @@
 
 A no-login personal travel-footprint tool for keeping countries, cities, and landmarks on an explorable map, tracking progress, and generating shareable posters.
 
-> The easiest path is to give the live site URL or GitHub URL to an Agent with web and Sites capabilities. You do not need to install or understand the deployment toolchain.
+## Product overview
 
-## Start with an Agent
+Wonder Wide is a personal travel-footprint map. Move between World and China views, record cities and landmarks, track coverage and travel titles, then generate a poster you can save and share.
+
+- Search for and record countries, cities, and landmarks on a world map.
+- Explore footprints, coverage, and travel titles in separate World and China views.
+- Optionally record visit dates and trip types; dates are never required.
+- Build a four-level country familiarity heatmap from visited cities and trip types.
+- Generate a World or China footprint poster and save it as an image.
+- Keep data in the current browser without registration or sign-in.
+
+### Product preview
+
+<table>
+  <tr>
+    <td width="25%"><img src="docs/images/world-atlas.png" alt="World footprint map" width="100%"></td>
+    <td width="25%"><img src="docs/images/china-atlas.png" alt="China footprint map" width="100%"></td>
+    <td width="25%"><img src="docs/images/world-poster.png" alt="World footprint poster" width="100%"></td>
+    <td width="25%"><img src="docs/images/china-poster.png" alt="China footprint poster" width="100%"></td>
+  </tr>
+  <tr>
+    <td align="center">World footprint</td>
+    <td align="center">China footprint</td>
+    <td align="center">World poster</td>
+    <td align="center">China poster</td>
+  </tr>
+</table>
+
+## How to use
+
+> The easiest path is to give the live site URL or GitHub URL to an Agent with web and Sites capabilities. You do not need to install or understand the deployment toolchain.
 
 ### Option 1: Use the existing site (recommended)
 
@@ -39,15 +67,6 @@ The Agent retrieves the code, validates it, creates an independent Site, publish
 To share with friends, send them the same live-site URL. A new independent copy stays private by default; ask the Agent to adjust its access when needed.
 
 In both cases, footprints stay in the browser that opened the site. They do not sync automatically across browsers, devices, Agents, or independent deployments.
-
-## Highlights
-
-- Search for and record countries, cities, and landmarks on a world map.
-- Explore footprints, coverage, and travel titles in separate World and China views.
-- Optionally record visit dates and trip types; dates are never required.
-- Build a four-level country familiarity heatmap from visited cities and trip types.
-- Generate a World or China footprint poster and save it as an image.
-- Keep data in the current browser's `localStorage` without registration or sign-in.
 
 ## Data and privacy
 
